@@ -7,7 +7,7 @@ module Syncify
     object :association, class: Object, default: []
     object :callback, class: Proc, default: nil
 
-    symbol :remote_database, default: :production_replica
+    symbol :remote_database
     object :identified_records, class: Set, default: Set[]
 
     def execute
@@ -112,11 +112,11 @@ module Syncify
     end
 
     def run_in_environment(environment)
-      initial_environment = Rails.env.to_sym
+      initial_config = ActiveRecord::Base.connection_config
       ActiveRecord::Base.establish_connection environment
       yield
     ensure
-      ActiveRecord::Base.establish_connection initial_environment
+      ActiveRecord::Base.establish_connection initial_config
     end
 
   end

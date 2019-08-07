@@ -2,6 +2,7 @@ require "bundler/setup"
 require 'active_interaction'
 require 'pry-byebug'
 require 'mock_rails_app'
+require 'factory_bot'
 require "syncify"
 
 RSpec.configure do |config|
@@ -14,4 +15,18 @@ RSpec.configure do |config|
   config.expect_with :rspec do |c|
     c.syntax = :expect
   end
+
+  config.include FactoryBot::Syntax::Methods
+
+  config.before(:suite) do
+    FactoryBot.find_definitions
+  end
+
+end
+
+def faux_remote
+  ActiveRecord::Base.establish_connection :faux_remote_env
+  yield
+ensure
+  ActiveRecord::Base.establish_connection :default_env
 end
