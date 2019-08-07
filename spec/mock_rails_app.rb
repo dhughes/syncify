@@ -3,8 +3,7 @@
 require 'sqlite3'
 require 'active_record'
 
-# SQLite3::Database.new('default.db')
-# SQLite3::Database.new('faux_remote.db')
+puts "got here"
 
 ActiveRecord::Base.configurations = {
   'default_env' => {
