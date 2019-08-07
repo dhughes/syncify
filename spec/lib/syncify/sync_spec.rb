@@ -118,4 +118,34 @@ RSpec.describe Syncify::Sync do
         to eq(remote_partner.partner_automation_setting)
     end
   end
+
+  context 'when syncing with a polymorphic association' do
+    it 'syncs the associations as specified' do
+      remote_campaign = faux_remote do
+        create(:campaign,
+               partner: create(:partner),
+               vertical: create(:vertical),
+               reference_object: create(:listing))
+      end
+      associations = [:partner,
+                      :vertical,
+                      Syncify::PolymorphicAssociation.new(
+                        :reference_object,
+                        RealEstateAgent => {},
+                        Listing => {}
+                      )]
+
+      Syncify::Sync.run!(klass: Campaign,
+                         id: remote_campaign.id,
+                         association: associations,
+                         remote_database: :faux_remote_env)
+
+      local_campaign = Campaign.find(remote_campaign.id)
+
+      expect(local_campaign).to eq(remote_campaign)
+      expect(local_campaign.partner).to eq(remote_campaign.partner)
+      expect(local_campaign.vertical).to eq(remote_campaign.vertical)
+      expect(local_campaign.reference_object).to eq(remote_campaign.reference_object)
+    end
+  end
 end

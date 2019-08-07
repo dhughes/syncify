@@ -79,5 +79,3 @@ end
 class Listing < ActiveRecord::Base
   has_many :campaigns, as: :reference_object
 end
-class AdvertiserProfile < ActiveRecord::Base
-end
