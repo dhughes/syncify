@@ -21,6 +21,8 @@ module Syncify
     end
 
     def identify_associated_records(root, associations)
+      identified_records << root
+
       standard_associations = associations.reject(&method(:includes_polymorphic_association))
       polymorphic_associations = associations.select(&method(:includes_polymorphic_association))
 

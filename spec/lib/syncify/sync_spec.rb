@@ -5,9 +5,6 @@ RSpec.describe Syncify::Sync do
     remote_campaign = faux_remote do
       create(:campaign)
     end
-
-    binding.pry
-
     associations = {}
 
     Syncify::Sync.run!(klass: Campaign,

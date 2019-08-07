@@ -2,8 +2,12 @@ require "bundler/setup"
 require 'active_interaction'
 require 'pry-byebug'
 require 'mock_rails_app'
+require 'activerecord-import/base'
+require 'activerecord-import/active_record/adapters/sqlite3_adapter'
 require 'factory_bot'
 require "syncify"
+
+ActiveRecord::Base.logger = Logger.new(STDOUT)
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure
@@ -21,7 +25,6 @@ RSpec.configure do |config|
   config.before(:suite) do
     FactoryBot.find_definitions
   end
-
 end
 
 def faux_remote

@@ -3,17 +3,17 @@
 require 'sqlite3'
 require 'active_record'
 
-SQLite3::Database.new('default.db')
-SQLite3::Database.new('faux_remote.db')
+# SQLite3::Database.new('default.db')
+# SQLite3::Database.new('faux_remote.db')
 
 ActiveRecord::Base.configurations = {
   'default_env' => {
     'adapter' => 'sqlite3',
-    'database' => 'default.db:'
+    'database' => 'spec/default.db'
   },
   'faux_remote_env' => {
     'adapter' => 'sqlite3',
-    'database' => 'production.db'
+    'database' => 'spec/faux_remote.db'
   }
 }
 

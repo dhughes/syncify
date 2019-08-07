@@ -32,9 +32,10 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rake", "~> 10.0"
   spec.add_development_dependency "rspec", "~> 3.0"
   spec.add_development_dependency "pry-byebug"
-  spec.add_development_dependency "activerecord"
   spec.add_development_dependency "sqlite3"
   spec.add_development_dependency "factory_bot_rails"
 
   spec.add_runtime_dependency "active_interaction", "~> 3.0"
+  spec.add_runtime_dependency "activerecord"
+  spec.add_runtime_dependency "activerecord-import", "~> 0.17"
 end
