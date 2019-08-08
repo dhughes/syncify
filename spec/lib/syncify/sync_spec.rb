@@ -219,9 +219,28 @@ RSpec.describe Syncify::Sync do
     end
   end
 
-  context 'when passing a block' do
-    it 'the block can manipulate the identified objects' do
-      fail
+  context 'when specifying a callback' do
+    it 'the callback can manipulate the identified objects' do
+      remote_campaign = faux_remote do
+        create(:campaign, vertical: create(:vertical, name: 'bad name'))
+      end
+      associations = :vertical
+
+      Syncify::Sync.run!(klass: Campaign,
+                         id: remote_campaign.id,
+                         association: associations,
+                         remote_database: :faux_remote_env,
+                         callback:
+                           proc do |identified_records|
+                             expect(identified_records.size).to eq(2)
+
+                             vertical = identified_records.find { |record| record.class == Vertical }
+                             vertical.name = 'good name'
+                           end
+                         )
+
+      expect(Vertical.all.size).to eq(1)
+      expect(Vertical.first.name).to eq('good name')
     end
   end
 end

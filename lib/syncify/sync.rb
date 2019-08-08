@@ -13,6 +13,7 @@ module Syncify
 
     def execute
       @identified_records = Set[]
+
       remote do
         identify_associated_records(klass.find(id), normalized_associations(association))
       end
