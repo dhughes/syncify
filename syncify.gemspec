@@ -13,8 +13,6 @@ Gem::Specification.new do |spec|
   spec.homepage      = "http://github.com/dhughes/syncify"
   spec.license       = "MIT"
 
-  spec.metadata["allowed_push_host"] = "TODO: Set to 'http://mygemserver.com'"
-
   spec.metadata["homepage_uri"] = spec.homepage
   spec.metadata["source_code_uri"] = "http://github.com/dhughes/syncify"
   spec.metadata["changelog_uri"] = "http://github.com/dhughes/syncify"
@@ -31,11 +29,11 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "bundler", "~> 2.0"
   spec.add_development_dependency "rake", "~> 10.0"
   spec.add_development_dependency "rspec", "~> 3.0"
-  spec.add_development_dependency "pry-byebug"
-  spec.add_development_dependency "sqlite3"
-  spec.add_development_dependency "factory_bot_rails"
+  spec.add_development_dependency "pry-byebug", "~> 3.7"
+  spec.add_development_dependency "sqlite3", '~> 1.3', '< 1.4'
+  spec.add_development_dependency "factory_bot_rails", "~> 4.11"
 
   spec.add_runtime_dependency "active_interaction", "~> 3.0"
-  spec.add_runtime_dependency "activerecord"
+  spec.add_runtime_dependency "activerecord", "~> 4.2"
   spec.add_runtime_dependency "activerecord-import", "~> 0.17"
 end
