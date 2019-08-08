@@ -2,7 +2,6 @@ require "bundler/setup"
 require 'active_interaction'
 require 'pry-byebug'
 require 'mock_rails_app'
-require 'database_cleaner'
 require 'activerecord-import/base'
 require 'activerecord-import/active_record/adapters/sqlite3_adapter'
 require 'factory_bot'
@@ -25,14 +24,16 @@ RSpec.configure do |config|
 
   config.before(:suite) do
     FactoryBot.find_definitions
-    DatabaseCleaner.strategy = :truncation
-    DatabaseCleaner.clean_with(:truncation)
   end
 
-  config.around(:example) do |example|
-    DatabaseCleaner.cleaning do
-      example.run
-    end
+  config.before(:example) do
+    setup_active_record
+    ActiveRecord::Base.establish_connection :default_env
+  end
+
+  config.after(:example) do
+    File.delete('spec/default.db')
+    File.delete('spec/faux_remote.db')
   end
 end
 

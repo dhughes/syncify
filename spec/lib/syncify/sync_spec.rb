@@ -100,9 +100,9 @@ RSpec.describe Syncify::Sync do
         create(:partner,
                campaigns: create_list(:campaign, 2),
                vertical: create(:vertical),
-               partner_automation_setting: create(:partner_automation_setting))
+               settings: create(:settings))
       end
-      associations = [:campaigns, :vertical, :partner_automation_setting]
+      associations = [:campaigns, :vertical, :settings]
 
       Syncify::Sync.run!(klass: Partner,
                          id: remote_partner.id,
@@ -114,8 +114,8 @@ RSpec.describe Syncify::Sync do
       expect(local_partner).to eq(remote_partner)
       expect(local_partner.campaigns).to eq(remote_partner.campaigns)
       expect(local_partner.vertical).to eq(remote_partner.vertical)
-      expect(local_partner.partner_automation_setting).
-        to eq(remote_partner.partner_automation_setting)
+      expect(local_partner.settings).
+        to eq(remote_partner.settings)
     end
   end
 
@@ -131,7 +131,7 @@ RSpec.describe Syncify::Sync do
                       :vertical,
                       Syncify::PolymorphicAssociation.new(
                         :reference_object,
-                        RealEstateAgent => {},
+                        Agent => {},
                         Listing => {}
                       )]
 
@@ -146,6 +146,82 @@ RSpec.describe Syncify::Sync do
       expect(local_campaign.partner).to eq(remote_campaign.partner)
       expect(local_campaign.vertical).to eq(remote_campaign.vertical)
       expect(local_campaign.reference_object).to eq(remote_campaign.reference_object)
+    end
+  end
+
+  context 'when syncing complex associations of various types' do
+    it 'does not sync recursively - only the specified associations' do
+      remote_campaign = faux_remote do
+        vertical1 = create(:vertical, name: 'v1')
+        vertical2 = create(:vertical, name: 'v2')
+        vertical3 = create(:vertical, name: 'v3')
+        create(:partner, vertical: vertical2)
+        partner2 = create(:partner, vertical: vertical2)
+        create(:partner, vertical: vertical1)
+        campaigns = create_list(:campaign, 3, partner: partner2, vertical: vertical3)
+        campaigns.last
+      end
+      associations = [
+        :vertical,
+        { partner: :vertical }
+      ]
+
+      Syncify::Sync.run!(klass: Campaign,
+                         id: remote_campaign.id,
+                         association: associations,
+                         remote_database: :faux_remote_env)
+
+      expect(Vertical.all.size).to eq(2)
+      expect(Vertical.all.map(&:name)).to eq(%w(v2 v3))
+      expect(Partner.all.size).to eq(1)
+      expect(Partner.first.id).to eq(2)
+    end
+
+    it 'syncs all the things correctly' do
+      remote_campaign = faux_remote do
+        vertical = create(:vertical)
+        settings = create(:settings)
+        partner = create(:partner, vertical: vertical, settings: settings)
+        agent = create(:agent)
+        listings = create_list(:listing, 5, agent: agent)
+        create(:campaign, partner: partner, vertical: vertical, reference_object: listings.last)
+      end
+      associations = [
+        { partner: :settings },
+        :vertical,
+        Syncify::PolymorphicAssociation.new(
+          :reference_object,
+          Agent => :listings,
+          Listing => { agent: :listings }
+        )
+      ]
+
+      Syncify::Sync.run!(klass: Campaign,
+                         id: remote_campaign.id,
+                         association: associations,
+                         remote_database: :faux_remote_env)
+
+      expect(Vertical.all.size).to eq(1)
+      expect(Settings.all.size).to eq(1)
+      expect(Partner.all.size).to eq(1)
+      expect(Agent.all.size).to eq(1)
+      expect(Listing.all.size).to eq(5)
+      expect(Campaign.all.size).to eq(1)
+      partner = Partner.first
+      expect(partner.vertical).to eq(Vertical.first)
+      expect(partner.settings).to eq(Settings.first)
+      agent = Agent.first
+      expect(agent.listings.size).to eq(5)
+      campaign = Campaign.first
+      expect(campaign.partner).to eq(partner)
+      expect(campaign.vertical).to eq(Vertical.first)
+      expect(campaign.reference_object).to eq(agent.listings.last)
+    end
+  end
+
+  context 'when passing a block' do
+    it 'the block can manipulate the identified objects' do
+      fail
     end
   end
 end

@@ -8,9 +8,11 @@ module Syncify
     object :callback, class: Proc, default: nil
 
     symbol :remote_database
-    object :identified_records, class: Set, default: Set[]
+
+    attr_accessor :identified_records
 
     def execute
+      @identified_records = Set[]
       remote do
         identify_associated_records(klass.find(id), normalized_associations(association))
       end
