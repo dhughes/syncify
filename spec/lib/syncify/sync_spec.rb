@@ -163,6 +163,35 @@ RSpec.describe Syncify::Sync do
       expect(local_campaign.vertical).to eq(remote_campaign.vertical)
       expect(local_campaign.reference_object).to eq(remote_campaign.reference_object)
     end
+
+    context 'when a polymorphic association has a nil value' do
+      it "doesn't track the nil" do
+        remote_campaign = faux_remote do
+          create(:campaign,
+                 partner: create(:partner),
+                 vertical: create(:vertical),
+                 reference_object: nil)
+        end
+        associations = [:partner,
+                        :vertical,
+                        Syncify::PolymorphicAssociation.new(
+                          :reference_object,
+                          Agent => {},
+                          Listing => {}
+                        )]
+
+        Syncify::Sync.run!(klass: Campaign,
+                           id: remote_campaign.id,
+                           association: associations,
+                           remote_database: :faux_remote_env)
+
+        local_campaign = Campaign.find(remote_campaign.id)
+        expect(local_campaign).to eq(remote_campaign)
+        expect(local_campaign.partner).to eq(remote_campaign.partner)
+        expect(local_campaign.vertical).to eq(remote_campaign.vertical)
+        expect(local_campaign.reference_object).to be_nil
+      end
+    end
   end
 
   context 'when syncing complex associations of various types' do

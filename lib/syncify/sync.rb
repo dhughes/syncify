@@ -49,6 +49,7 @@ module Syncify
           end
         else
           target = root.__send__(polymorphic_association.property)
+          next if target.nil?
           type = polymorphic_association.associations.keys.detect do |association_type|
             target.is_a?(association_type)
           end
