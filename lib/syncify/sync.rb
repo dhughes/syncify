@@ -71,14 +71,12 @@ module Syncify
     end
 
     def sync_records
-      bulk_insert_identified_records
-    end
-
-    def bulk_insert_identified_records
-      classify_identified_instances.each do |class_name, new_instances|
-        puts "Syncing #{new_instances.size} #{class_name} objects"
-        clazz = Object.const_get(class_name)
-        clazz.import(new_instances, validate: false, on_duplicate_key_update: [:id])
+      ActiveRecord::Base.connection.disable_referential_integrity do
+        classify_identified_instances.each do |class_name, new_instances|
+          puts "Syncing #{new_instances.size} #{class_name} objects"
+          clazz = Object.const_get(class_name)
+          clazz.import(new_instances, validate: false, on_duplicate_key_update: [:id])
+        end
       end
     end
 

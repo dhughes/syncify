@@ -1,18 +1,34 @@
 # frozen_string_literal: true
 
 RSpec.describe Syncify::Sync do
-  it 'syncs a single class' do
-    remote_campaign = faux_remote do
-      create(:campaign)
+  context 'without specifying an association' do
+    it 'syncs a single class' do
+      remote_campaign = faux_remote do
+        create(:campaign)
+      end
+
+      Syncify::Sync.run!(klass: Campaign,
+                         id: remote_campaign.id,
+                         remote_database: :faux_remote_env)
+
+      expect(Campaign.find(remote_campaign.id)).to eq(remote_campaign)
     end
-    associations = {}
+  end
 
-    Syncify::Sync.run!(klass: Campaign,
-                       id: remote_campaign.id,
-                       association: associations,
-                       remote_database: :faux_remote_env)
+  context 'with an empty association' do
+    it 'syncs a single class' do
+      remote_campaign = faux_remote do
+        create(:campaign)
+      end
+      associations = {}
 
-    expect(Campaign.find(remote_campaign.id)).to eq(remote_campaign)
+      Syncify::Sync.run!(klass: Campaign,
+                         id: remote_campaign.id,
+                         association: associations,
+                         remote_database: :faux_remote_env)
+
+      expect(Campaign.find(remote_campaign.id)).to eq(remote_campaign)
+    end
   end
 
   context 'when syncing a class with a belongs_to association' do

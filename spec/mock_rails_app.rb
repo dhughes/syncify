@@ -21,24 +21,29 @@ def setup_active_record
     # Set up database tables and columns
     ActiveRecord::Schema.define do
       create_table :campaigns do |t|
-        t.references :partner
-        t.references :vertical
+        t.references :partner, foreign_key: true
+        t.references :vertical, foreign_key: true
         t.integer :reference_object_id
         t.string  :reference_object_type
+        t.timestamps
       end
       create_table :partners do |t|
         t.string :name
-        t.references :vertical
+        t.references :vertical, foreign_key: true
+        t.timestamps
       end
       create_table :verticals do |t|
         t.string :name
+        t.timestamps
       end
       create_table :settings do |t|
-        t.references :partner
+        t.references :partner, foreign_key: true
+        t.timestamps
       end
       create_table :agents
       create_table :listings do |t|
-        t.references :agent
+        t.references :agent, foreign_key: true
+        t.timestamps
       end
     end
   end
