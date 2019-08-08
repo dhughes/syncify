@@ -72,7 +72,7 @@ Running the above example will copy two records into your local database:
 * The `Widget` with id 123 (Lubricated Stainless Steel Helical Insert)
 * The `Manufacturer` with id 78 (South Seas Trading Company)
 
-It's important to note that Syncer _does not_ recursively follow associations. You'll note that not all of the the manufacturer's widgets were synced, only the one we specified.
+It's important to note that Syncify _does not_ recursively follow associations. You'll note that not all of the the manufacturer's widgets were synced, only the one we specified.
 
 The `association` attribute passed into the `run!` method can be any valid value that you might use when joining records with ActiveRecord. The above effectively becomes:
 
@@ -116,7 +116,7 @@ You can really go wild with the associations; well beyond what you could normall
 
 ### Polymorphic Associations
 
-Syncify also works with (and across) Polymorphic associations! To sync across polymorphic associations you need to specify an association using the `Syncer::PolymorphicAssociation` class. This is put in place in your otherwise-normal associations.
+Syncify also works with (and across) Polymorphic associations! To sync across polymorphic associations you need to specify an association using the `Syncify::PolymorphicAssociation` class. This is put in place in your otherwise-normal associations.
 
 Let's imagine that we run an online store that sells both physical and digital goods. A given invoice then might have line items that refer to either type of good.
 
@@ -150,7 +150,7 @@ Here's an example. For simplicity's sake it assumes that the database doesn't us
 ```ruby
 Syncify::Sync.run!(klass: Customer,
                    id: 999,
-                   association: Syncer::PolymorphicAssociation.new(
+                   association: Syncify::PolymorphicAssociation.new(
                      :product,
                      DigitalProduct => {},
                      PhysicalProduct => {}
@@ -160,7 +160,7 @@ Syncify::Sync.run!(klass: Customer,
 
 Assuming that line item 42's product is a `DigitalProduct`, this example would have synced the `LineItem` and its `DigitalProduct` and nothing else.
 
-The `Syncer::PolymorphicAssociation` is saying that, for the `LineItem`'s `product` polymorphic association, when the product is a `DigitalProduct`, sync it with the specified associations (in this case none). When the product is a `PhysicalProduct`, sync it with the specified associations (again, none in this case).
+The `Syncify::PolymorphicAssociation` is saying that, for the `LineItem`'s `product` polymorphic association, when the product is a `DigitalProduct`, sync it with the specified associations (in this case none). When the product is a `PhysicalProduct`, sync it with the specified associations (again, none in this case).
 
 Now let's say that we want to sync a specific `Customer` and all of their invoices and the related products. IE: the whole kit and caboodle. Here's how you can do it:
 
@@ -169,7 +169,7 @@ Syncify::Sync.run!(klass: Customer,
                    id: 999,
                    association: {
                      invoices: {
-                       line_items: Syncer::PolymorphicAssociation.new(
+                       line_items: Syncify::PolymorphicAssociation.new(
                          :product,
                          DigitalProduct => :category,
                          PhysicalProduct => :distributor
