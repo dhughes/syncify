@@ -24,7 +24,6 @@ Or install it yourself as:
 
 ## Usage
 
-
 Syncify doesn't require Rails, just ActiveRecord, but it's a reasonable foundation for the following examples.
 
 Also, you can sync from any environment to whatever your current environment is. So, you could sync from your staging environment to your client test environment or from staging to development. Heck, you could go from staging to prod if you'd like.
@@ -180,6 +179,32 @@ Syncify::Sync.run!(klass: Customer,
 ```
 
 This will sync a customer, all of their invoices, all of those invoice's line items. It goes on to sync all of the line item's products, whether digital or physical, as well as the digital product's category and the physical product's distributor.
+
+### Callbacks
+
+Sometimes production databases contain sensitive data that you really don't want to have end up in other environments. Or, maybe you want to disassociate production data from third party production APIs. Or maybe you want to download images before you actually create image records locally. Syncify handles this by providing a callback mechanism.
+
+Syncify's workflow is basically this:
+
+1. Using the specified class and its associations, Syncify identifies all of the records we need to sync to the local environment. Effectively, all of the records are loaded from the remote environment into a set in memory.
+2. Syncify calls an optional `callback` proc you can pass into the `run!` method.
+3. Syncify actually bulk inserts all of the identified records into the local database.
+
+By providing a `callback` proc, you can take some sort of action after all of the remote data has been identified, but before you write it locally. This includes modifying the remote data (in memory, not actually in the remote database).
+
+Here's an example that masks personally identifiable information for users:
+
+```ruby
+Syncify::Sync.run!(klass: User,
+                   id: 40,
+                   remote_database: :production,
+                   callback:
+                     proc do |identified_records|
+                       user = identified_records.find { |record| record.class == User }
+                       user.first_name = "#{user.first_name.first}#{'*' * (user.first_name.size - 1)}"
+                       user.last_name = "#{user.last_name.first}#{'*' * (user.last_name.size - 1)}"
+                     end
+```
 
 ## Development
 
