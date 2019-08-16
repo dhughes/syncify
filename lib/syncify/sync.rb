@@ -77,7 +77,7 @@ module Syncify
         classify_identified_instances.each do |class_name, new_instances|
           puts "Syncing #{new_instances.size} #{class_name} objects"
           clazz = Object.const_get(class_name)
-          clazz.where(id: [new_instances.map(&:id)]).delete_all
+          clazz.where(id: new_instances.map(&:id)).delete_all
           clazz.import(new_instances, validate: false)
         end
       end

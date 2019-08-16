@@ -25,34 +25,34 @@ def setup_active_record
         t.references :vertical, foreign_key: true
         t.integer :reference_object_id
         t.string  :reference_object_type
-        t.timestamps
+        t.timestamps null: false
       end
       create_table :products do |t|
         t.string :type
         t.references :campaign, foreign_key: true
-        t.timestamps
+        t.timestamps null: false
       end
       create_table :orders do |t|
         t.references :owner, polymorphic: true
-        t.timestamps
+        t.timestamps null: false
       end
       create_table :partners do |t|
         t.string :name
         t.references :vertical, foreign_key: true
-        t.timestamps
+        t.timestamps null: false
       end
       create_table :verticals do |t|
         t.string :name
-        t.timestamps
+        t.timestamps null: false
       end
       create_table :settings do |t|
         t.references :partner, foreign_key: true
-        t.timestamps
+        t.timestamps null: false
       end
       create_table :agents
       create_table :listings do |t|
         t.references :agent, foreign_key: true
-        t.timestamps
+        t.timestamps null: false
       end
     end
   end
