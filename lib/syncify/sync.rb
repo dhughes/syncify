@@ -12,11 +12,14 @@ module Syncify
     attr_accessor :identified_records
 
     def execute
+      puts 'Identifying records to sync...'
       @identified_records = Set[]
 
       remote do
         identify_associated_records(klass.find(id), normalized_associations(association))
       end
+
+      puts "Identified #{identified_records.size} records to sync."
 
       callback.call(identified_records) if callback.present?
 
@@ -24,16 +27,14 @@ module Syncify
     end
 
     def identify_associated_records(root, associations)
+      print '.'
       identified_records << root
 
       standard_associations = associations.reject(&method(:includes_polymorphic_association))
       polymorphic_associations = associations.select(&method(:includes_polymorphic_association))
 
       standard_associations.each do |association|
-        traverse_associations(
-          root.class.eager_load(association).find(root.id),
-          association
-        )
+        traverse_associations(root.class.eager_load(association).find(root.id), association)
       end
 
       identify_polymorphic_associated_records(root, polymorphic_associations)
@@ -76,13 +77,14 @@ module Syncify
         classify_identified_instances.each do |class_name, new_instances|
           puts "Syncing #{new_instances.size} #{class_name} objects"
           clazz = Object.const_get(class_name)
-          clazz.import(new_instances, validate: false, on_duplicate_key_update: [:id])
+          clazz.where(id: [new_instances.map(&:id)]).delete_all
+          clazz.import(new_instances, validate: false)
         end
       end
     end
 
     def classify_identified_instances
-      puts "Classifying #{identified_records.size} records for bulk import."
+      puts "Classifying #{identified_records.size} records for bulk import..."
 
       identified_records.each_with_object({}) do |instance, memo|
         clazz = instance.class

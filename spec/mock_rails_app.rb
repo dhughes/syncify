@@ -27,6 +27,15 @@ def setup_active_record
         t.string  :reference_object_type
         t.timestamps
       end
+      create_table :products do |t|
+        t.string :type
+        t.references :campaign, foreign_key: true
+        t.timestamps
+      end
+      create_table :orders do |t|
+        t.references :owner, polymorphic: true
+        t.timestamps
+      end
       create_table :partners do |t|
         t.string :name
         t.references :vertical, foreign_key: true
@@ -54,6 +63,16 @@ class Campaign < ActiveRecord::Base
   belongs_to :partner
   belongs_to :vertical
   belongs_to :reference_object, polymorphic: true
+  has_many :products
+end
+class Product < ActiveRecord::Base
+  belongs_to :campaign
+  has_one :order, -> { where 'owner_id IS NOT NULL' }, as: :owner
+end
+class ProductA < Product; end
+class ProductB < Product; end
+class Order < ActiveRecord::Base
+  belongs_to :owner, polymorphic: true
 end
 class Partner < ActiveRecord::Base
   has_many :campaigns

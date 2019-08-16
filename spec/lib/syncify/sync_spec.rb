@@ -288,4 +288,41 @@ RSpec.describe Syncify::Sync do
       expect(Vertical.first.name).to eq('good name')
     end
   end
+
+  it 'syncs example orders correctly' do
+    remote_campaign = faux_remote do
+      product_a = create(:product_a)
+      product_b = create(:product_b)
+      order_a = create(:order, owner: product_a)
+      order_b = create(:order, owner: product_b)
+      create(:campaign, products: [product_a, product_b])
+    end
+    associations = [
+      { products: :order }
+    ]
+
+    expect do
+      Syncify::Sync.run!(klass: Campaign,
+                         id: remote_campaign.id,
+                         association: associations,
+                         remote_database: :faux_remote_env)
+    end.to change { Order.all.size }.by(2)
+  end
+
+  context 'when a record already exists locally' do
+    it 'overwrites the local record' do
+      local_partner = create(:partner, id: 999, name: nil)
+      remote_partner = faux_remote do
+        create(:partner, id: 999, name: 'Wargarble Inc')
+      end
+
+      Syncify::Sync.run!(klass: Partner,
+                         id: remote_partner.id,
+                         remote_database: :faux_remote_env)
+
+      local_partner.reload
+      expect(local_partner.name).to eq(remote_partner.name)
+
+    end
+  end
 end
