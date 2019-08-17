@@ -26,9 +26,15 @@ module Syncify
       sync_records
     end
 
+    private
+
+    def print_status
+      print "\rIdentified #{identified_records.size} records..."
+    end
+
     def identify_associated_records(root, associations)
-      print '.'
       identified_records << root
+      print_status
 
       standard_associations = associations.reject(&method(:includes_polymorphic_association))
       polymorphic_associations = associations.select(&method(:includes_polymorphic_association))
@@ -64,6 +70,7 @@ module Syncify
       records = Array(records)
 
       identified_records.merge records
+      print_status
 
       records.each do |record|
         associations.each do |association, nested_associations|
