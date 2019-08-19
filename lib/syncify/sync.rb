@@ -3,7 +3,8 @@
 module Syncify
   class Sync < ActiveInteraction::Base
     object :klass, class: Class
-    integer :id
+    integer :id, default: nil
+    object :where, class: Object, default: nil
     object :association, class: Object, default: []
     object :callback, class: Proc, default: nil
 
@@ -11,12 +12,16 @@ module Syncify
 
     attr_accessor :identified_records
 
+    validate :id_xor_where_present?
+
     def execute
       puts 'Identifying records to sync...'
       @identified_records = Set[]
 
       remote do
-        identify_associated_records(klass.find(id), normalized_associations(association))
+        initial_query.each do |root_record|
+          identify_associated_records(root_record, normalized_associations(association))
+        end
       end
 
       puts "Identified #{identified_records.size} records to sync."
@@ -27,6 +32,21 @@ module Syncify
     end
 
     private
+
+    def initial_query
+      if id?
+        klass.where(id: id)
+      else
+        klass.where(where)
+      end
+    end
+
+    def id_xor_where_present?
+      unless id? ^ where?
+        errors.add(:id,
+                   'Please provide either the id argument or the where argument, but not both.')
+      end
+    end
 
     def print_status
       print "\rIdentified #{identified_records.size} records..."

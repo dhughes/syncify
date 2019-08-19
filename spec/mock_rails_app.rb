@@ -38,6 +38,7 @@ def setup_active_record
       end
       create_table :partners do |t|
         t.string :name
+        t.boolean :active
         t.references :vertical, foreign_key: true
         t.timestamps null: false
       end

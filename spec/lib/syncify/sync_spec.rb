@@ -325,4 +325,59 @@ RSpec.describe Syncify::Sync do
 
     end
   end
+
+  context 'when using a where statement' do
+    it 'raises an error if the id argument is also provided' do
+      expect do
+        Syncify::Sync.run!(klass: Campaign,
+                           id: 123,
+                           where: { active: true },
+                           association: :vertical,
+                           remote_database: :faux_remote_env)
+      end.
+        to raise_error(/Please provide either the id argument or the where argument, but not both./)
+    end
+
+    context 'when using activerecord syntax' do
+      it 'syncs all matching records' do
+        faux_remote do
+          create(:partner, name: 'Partner 1', active: true, vertical: create(:vertical, name: 'V1'))
+          create(:partner, name: 'Partner 2', active: false, vertical: create(:vertical, name: 'V2'))
+          create(:partner, name: 'Partner 3', active: true, vertical: create(:vertical, name: 'V3'))
+        end
+
+        expect do
+          Syncify::Sync.run!(klass: Partner,
+                             where: { active: true },
+                             association: :vertical,
+                             remote_database: :faux_remote_env)
+        end.to change { Partner.all.size }.by(2).
+          and change { Vertical.all.size }.by(2)
+
+        expect(Partner.all.map(&:name)).to eq(['Partner 1', 'Partner 3'])
+        expect(Vertical.all.map(&:name)).to eq(['V1', 'V3'])
+      end
+    end
+
+    context 'when using SQL syntax' do
+      it 'syncs all matching records' do
+        faux_remote do
+          create(:partner, name: 'Partner 1', active: true, vertical: create(:vertical, name: 'V1'))
+          create(:partner, name: 'Partner 2', active: false, vertical: create(:vertical, name: 'V2'))
+          create(:partner, name: 'Partner 3', active: true, vertical: create(:vertical, name: 'V3'))
+        end
+
+        expect do
+          Syncify::Sync.run!(klass: Partner,
+                             where: "partners.active = 't'",
+                             association: :vertical,
+                             remote_database: :faux_remote_env)
+        end.to change { Partner.all.size }.by(2).
+          and change { Vertical.all.size }.by(2)
+
+        expect(Partner.all.map(&:name)).to eq(['Partner 1', 'Partner 3'])
+        expect(Vertical.all.map(&:name)).to eq(['V1', 'V3'])
+      end
+    end
+  end
 end

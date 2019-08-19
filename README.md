@@ -38,6 +38,19 @@ Syncify::Sync.run!(klass: Widget, id: 123, remote_database: :production)
 
 Boom! You've copied `Widget` 123 to local dev. The widget will have all the same values including its `id`, `created_at`, `updated_at`, etc values. The above example assumes that the `Widget` doesn't have any foreign keys that don't exist locally.
 
+Syncify also accepts a `where` argument in the form of any valid active record `where` expression (a hash or a string). Here's the same as above, but with a `where`:
+
+```ruby
+Syncify::Sync.run!(klass: Widget, where: { id: 123 }, remote_database: :production)
+```
+
+Or...
+
+
+```ruby
+Syncify::Sync.run!(klass: Widget, where: 'widgets.id = 123', remote_database: :production)
+```
+
 Now, let's say a `Widget` `belongs_to` a `Manufacturer`. Furthermore, let's say a `Manufacturer` `has_many` `Widget`s. We'll pretend we have this data in the prod database:
 
 `widgets`:
