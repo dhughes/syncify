@@ -28,6 +28,7 @@ def setup_active_record
         t.string  :reference_object_type
         t.timestamps null: false
       end
+      create_join_table :campaigns, :products
       create_table :products do |t|
         t.string :type
         t.string :name
@@ -66,10 +67,10 @@ class Campaign < ActiveRecord::Base
   belongs_to :partner
   belongs_to :vertical
   belongs_to :reference_object, polymorphic: true
-  has_many :products
+  has_and_belongs_to_many :products
 end
 class Product < ActiveRecord::Base
-  belongs_to :campaign
+  has_and_belongs_to_many :campaign
   has_one :order, -> { where 'owner_id IS NOT NULL' }, as: :owner
 end
 class ProductA < Product; end

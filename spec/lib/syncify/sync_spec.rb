@@ -216,11 +216,31 @@ RSpec.describe Syncify::Sync do
     end
   end
 
-  # context 'when syncing a has and belongs to many' do
-  #   it 'correctly syncs the linking table' do
-  #     fail
-  #   end
-  # end
+  context 'when syncing a has and belongs to many' do
+    it 'correctly syncs the join table' do
+      remote_campaign = faux_remote do
+        product1 = create(:product_a, name: 'thing 1')
+        product2 = create(:product_b, name: 'thing 2')
+        create(:campaign, name: 'campaign 1', products: [product1, product2])
+      end
+      associations = :products
+
+      Syncify::Sync.run!(klass: Campaign,
+                         where: remote_campaign.id,
+                         association: associations,
+                         remote_database: :faux_remote_env
+      )
+
+      campaigns_products = ActiveRecord::Base.connection.execute('select * from campaigns_products')
+
+      expect(campaigns_products.size).to eq(2)
+      campaign_ids = campaigns_products.map { |cp| cp['campaign_id'] }
+      product_ids = campaigns_products.map { |cp| cp['product_id'] }
+      expect(campaign_ids).to eq([remote_campaign.id, remote_campaign.id])
+      expect(product_ids).to eq(remote_campaign.products.map(&:id))
+
+    end
+  end
 
   context 'when within a callback' do
     it "does not allow persisting remote objects (you can't update prod)" do

@@ -11,12 +11,14 @@ module Syncify
     symbol :remote_database
 
     attr_accessor :identified_records
+    attr_accessor :has_and_belongs_to_many_associations
 
     validate :id_xor_where_present?
 
     def execute
       puts 'Identifying records to sync...'
       @identified_records = Set[]
+      @has_and_belongs_to_many_associations = {}
 
       remote do
         initial_query.each do |root_record|
@@ -102,10 +104,26 @@ module Syncify
               associations
             )
           else
-            traverse_associations(record.__send__(association), nested_associations)
+            associated_records = record.__send__(association)
+
+            if is_has_and_belongs_to_many_association?(record, association)
+              cache_has_and_belongs_to_many_association(record, association, associated_records)
+            end
+
+            traverse_associations(associated_records, nested_associations)
           end
         end
       end
+    end
+
+    def cache_has_and_belongs_to_many_association(record, association, associated_records)
+      has_and_belongs_to_many_associations[record] ||= {}
+      has_and_belongs_to_many_associations[record][association] = Array(associated_records)
+    end
+
+    def is_has_and_belongs_to_many_association?(record, association)
+      record.class.reflect_on_association(association).class ==
+        ActiveRecord::Reflection::HasAndBelongsToManyReflection
     end
 
     def is_through_association?(record, association)
@@ -120,6 +138,17 @@ module Syncify
           clazz = Object.const_get(class_name)
           clazz.where(id: new_instances.map(&:id)).delete_all
           clazz.import(new_instances, validate: false)
+        end
+
+        has_and_belongs_to_many_associations.each do |record, associations|
+          associations.each do |association, associated_records|
+            local_record = record.class.find(record.id)
+            local_associated_records = associated_records.map do |associated_record|
+              associated_record.class.find(associated_record.id)
+            end
+            local_record.__send__(association) << local_associated_records
+            local_record.save
+          end
         end
       end
     end
