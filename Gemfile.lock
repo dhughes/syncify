@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    syncify (0.1.5)
+    syncify (0.1.6)
       active_interaction (~> 3.0)
       activerecord (~> 4.2)
       activerecord-import (~> 0.17)

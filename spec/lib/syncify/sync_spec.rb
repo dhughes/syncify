@@ -221,12 +221,31 @@ RSpec.describe Syncify::Sync do
   #     fail
   #   end
   # end
-  #
-  # context 'when within a callback' do
-  #   it "does not allow persisting remote objects (you can't update prod)" do
-  #     fail
-  #   end
-  # end
+
+  context 'when within a callback' do
+    it "does not allow persisting remote objects (you can't update prod)" do
+      remote_partner = faux_remote do
+        create(:partner, name: 'Blargh')
+      end
+
+      Syncify::Sync.run!(klass: Partner,
+                         where: remote_partner.id,
+                         remote_database: :faux_remote_env,
+                         callback:
+                           proc do |identified_records|
+                             partner = identified_records.first
+                             partner.name = 'Ping'
+                             partner.save # it would be nice if this somehow raised an error
+
+                             remote_partner2 = faux_remote do
+                               Partner.find(remote_partner.id)
+                             end
+
+                             expect(remote_partner2).to eq(remote_partner)
+                           end
+                        )
+    end
+  end
 
   context 'when syncing complex associations of various types' do
     it 'does not sync recursively - only the specified associations' do
