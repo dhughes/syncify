@@ -94,9 +94,23 @@ module Syncify
 
       records.each do |record|
         associations.each do |association, nested_associations|
-          traverse_associations(record.__send__(association), nested_associations)
+          if is_through_association?(record, association)
+            traverse_associations(
+              record.__send__(
+                record.class.reflect_on_association(association).through_reflection.name
+              ),
+              associations
+            )
+          else
+            traverse_associations(record.__send__(association), nested_associations)
+          end
         end
       end
+    end
+
+    def is_through_association?(record, association)
+      record.class.reflect_on_association(association).class ==
+        ActiveRecord::Reflection::ThroughReflection
     end
 
     def sync_records

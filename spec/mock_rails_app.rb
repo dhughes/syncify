@@ -21,6 +21,7 @@ def setup_active_record
     # Set up database tables and columns
     ActiveRecord::Schema.define do
       create_table :campaigns do |t|
+        t.string :name
         t.references :partner, foreign_key: true
         t.references :vertical, foreign_key: true
         t.integer :reference_object_id
@@ -29,6 +30,7 @@ def setup_active_record
       end
       create_table :products do |t|
         t.string :type
+        t.string :name
         t.references :campaign, foreign_key: true
         t.timestamps null: false
       end
@@ -79,6 +81,7 @@ class Partner < ActiveRecord::Base
   has_many :campaigns
   belongs_to :vertical
   has_one :settings
+  has_many :products, through: :campaigns
 end
 class Vertical < ActiveRecord::Base
   has_many :partners

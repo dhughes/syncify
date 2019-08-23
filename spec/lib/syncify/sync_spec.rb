@@ -194,6 +194,40 @@ RSpec.describe Syncify::Sync do
     end
   end
 
+  context 'when syncing a "through" association' do
+    it 'correctly syncs the "through" object too' do
+      remote_partner = faux_remote do
+        product1 = create(:product_a, name: 'thing 1')
+        product2 = create(:product_b, name: 'thing 2')
+        product3 = create(:product_a, name: 'thing 3')
+        product4 = create(:product_b, name: 'thing 4')
+        campaign1 = create(:campaign, name: 'campaign 1', products: [product1, product2])
+        campaign2 = create(:campaign, name: 'campaign 2', products: [product3, product4])
+        create(:partner, campaigns: [campaign1, campaign2])
+      end
+      associations = :products
+
+      Syncify::Sync.run!(klass: Partner,
+                         where: remote_partner.id,
+                         association: associations,
+                         remote_database: :faux_remote_env)
+
+      expect(Campaign.all.map(&:name)).to eq(['campaign 1', 'campaign 2'])
+    end
+  end
+
+  # context 'when syncing a has and belongs to many' do
+  #   it 'correctly syncs the linking table' do
+  #     fail
+  #   end
+  # end
+  #
+  # context 'when within a callback' do
+  #   it "does not allow persisting remote objects (you can't update prod)" do
+  #     fail
+  #   end
+  # end
+
   context 'when syncing complex associations of various types' do
     it 'does not sync recursively - only the specified associations' do
       remote_campaign = faux_remote do
