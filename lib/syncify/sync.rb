@@ -96,7 +96,7 @@ module Syncify
 
       records.each do |record|
         associations.each do |association, nested_associations|
-          if is_through_association?(record, association)
+          if through_association?(record, association)
             traverse_associations(
               record.__send__(
                 record.class.reflect_on_association(association).through_reflection.name
@@ -106,7 +106,7 @@ module Syncify
           else
             associated_records = record.__send__(association)
 
-            if is_has_and_belongs_to_many_association?(record, association)
+            if has_and_belongs_to_many_association?(record, association)
               cache_has_and_belongs_to_many_association(record, association, associated_records)
             end
 
@@ -121,12 +121,12 @@ module Syncify
       has_and_belongs_to_many_associations[record][association] = Array(associated_records)
     end
 
-    def is_has_and_belongs_to_many_association?(record, association)
+    def has_and_belongs_to_many_association?(record, association)
       record.class.reflect_on_association(association).class ==
         ActiveRecord::Reflection::HasAndBelongsToManyReflection
     end
 
-    def is_through_association?(record, association)
+    def through_association?(record, association)
       record.class.reflect_on_association(association).class ==
         ActiveRecord::Reflection::ThroughReflection
     end
