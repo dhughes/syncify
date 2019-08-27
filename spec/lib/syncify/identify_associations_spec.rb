@@ -6,7 +6,8 @@ RSpec.describe Syncify::IdentifyAssociations do
       ActiveRecord::Schema.define do
         create_table :cats
       end
-      class Cat < ActiveRecord::Base; end
+      class Cat < ActiveRecord::Base;
+      end
 
       generated_associations = Syncify::IdentifyAssociations.run!(klass: Cat)
 
@@ -24,7 +25,8 @@ RSpec.describe Syncify::IdentifyAssociations do
     class Car < ActiveRecord::Base
       has_one :steering_wheel
     end
-    class SteeringWheel < ActiveRecord::Base; end
+    class SteeringWheel < ActiveRecord::Base;
+    end
 
     generated_associations = Syncify::IdentifyAssociations.run!(klass: Car)
 
@@ -45,8 +47,10 @@ RSpec.describe Syncify::IdentifyAssociations do
       has_one :trunk
       has_one :color
     end
-    class Trunk < ActiveRecord::Base; end
-    class Color < ActiveRecord::Base; end
+    class Trunk < ActiveRecord::Base;
+    end
+    class Color < ActiveRecord::Base;
+    end
 
     generated_associations = Syncify::IdentifyAssociations.run!(klass: Elephant)
 
@@ -63,7 +67,8 @@ RSpec.describe Syncify::IdentifyAssociations do
     class Train < ActiveRecord::Base
       has_many :engines
     end
-    class Engine < ActiveRecord::Base; end
+    class Engine < ActiveRecord::Base;
+    end
 
     generated_associations = Syncify::IdentifyAssociations.run!(klass: Train)
 
@@ -84,8 +89,10 @@ RSpec.describe Syncify::IdentifyAssociations do
       has_many :passengers
       has_many :pilots
     end
-    class Passenger < ActiveRecord::Base; end
-    class Pilot < ActiveRecord::Base; end
+    class Passenger < ActiveRecord::Base;
+    end
+    class Pilot < ActiveRecord::Base;
+    end
 
     generated_associations = Syncify::IdentifyAssociations.run!(klass: Plane)
 
@@ -99,7 +106,8 @@ RSpec.describe Syncify::IdentifyAssociations do
         t.references :schools
       end
     end
-    class School < ActiveRecord::Base; end
+    class School < ActiveRecord::Base;
+    end
     class Student < ActiveRecord::Base
       belongs_to :school
     end
@@ -121,15 +129,17 @@ RSpec.describe Syncify::IdentifyAssociations do
       belongs_to :category
       belongs_to :seller
     end
-    class Category < ActiveRecord::Base; end
-    class Seller < ActiveRecord::Base; end
+    class Category < ActiveRecord::Base;
+    end
+    class Seller < ActiveRecord::Base;
+    end
 
     generated_associations = Syncify::IdentifyAssociations.run!(klass: Ware)
 
     expect(generated_associations).to eq([:category, :seller])
   end
 
-  it 'returns a hash containing a states associated with counties' do
+  it 'returns a hash for a single has many through association' do
     ActiveRecord::Schema.define do
       create_table :countries
       create_table :states do |t|
@@ -165,23 +175,99 @@ RSpec.describe Syncify::IdentifyAssociations do
     expect(generated_associations).to eq(expected_associations)
   end
 
-  # it 'returns an array of symbols for multiple has_many through associations' do
-  #   fail
-  # end
-  #
-  # it 'returns a single symbol for a single has_one through association' do
-  #   fail
-  # end
-  #
-  # it 'returns an array of symbols for multiple has_one through associations' do
-  #   fail
-  # end
-  #
-  # it 'returns a single symbol for a single has_and_belongs_to_many association' do
-  #   fail
-  # end
-  #
-  # it 'returns an array of symbols for multiple has_and_belongs_to_many associations' do
-  #   fail
-  # end
+  it 'returns an array of hashes for multiple has_many through associations' do
+    ActiveRecord::Schema.define do
+      create_table :buildings
+      create_table :apartments do |t|
+        t.references :building
+      end
+      create_table :garages do |t|
+        t.references :building
+      end
+      create_table :tenants do |t|
+        t.references :apartment
+      end
+      create_table :vehicles do |t|
+        t.references :garage
+      end
+    end
+    class Building < ActiveRecord::Base
+      has_many :apartments
+      has_many :tenants, through: :apartments
+      has_many :garages
+      has_many :vehicles, through: :garages
+    end
+    class Apartment < ActiveRecord::Base
+      belongs_to :building
+      has_many :tenants
+    end
+    class Garage < ActiveRecord::Base
+      belongs_to :building
+      has_many :vehicles
+    end
+    class Tenant < ActiveRecord::Base
+      belongs_to :apartment
+    end
+    class Vehicle < ActiveRecord::Base
+      belongs_to :garage
+    end
+    expected_associations = [
+      { apartments: :tenants },
+      { garages: :vehicles }
+    ]
+
+    generated_associations = Syncify::IdentifyAssociations.run!(klass: Building)
+
+    expect(generated_associations).to eq(expected_associations)
+  end
+
+  it 'returns a hash for a single has_one through association' do
+    ActiveRecord::Schema.define do
+      create_table :suppliers
+      create_table :accounts do |t|
+        t.references :supplier
+      end
+      create_table :account_histories do |t|
+        t.references :account
+      end
+    end
+    # the following was gratuitously stolen from the Rails guides.
+    class Supplier < ActiveRecord::Base
+      has_one :account
+      has_one :account_history, through: :account
+    end
+    class Account < ActiveRecord::Base
+      belongs_to :supplier
+      has_one :account_history
+    end
+    class AccountHistory < ActiveRecord::Base
+      belongs_to :account
+    end
+    expected_associations = { account: :account_history }
+
+    generated_associations = Syncify::IdentifyAssociations.run!(klass: Supplier)
+
+    expect(generated_associations).to eq(expected_associations)
+  end
+
+  it 'returns a symbol for a single has_and_belongs_to_many association' do
+    ActiveRecord::Schema.define do
+      create_table :assemblies
+      create_table :parts
+      create_table :assemblies_parts, id: false do |t|
+        t.belongs_to :assembly
+        t.belongs_to :part
+      end
+    end
+    class Assembly < ActiveRecord::Base
+      has_and_belongs_to_many :parts
+    end
+    class Part < ActiveRecord::Base
+      has_and_belongs_to_many :assemblies
+    end
+
+    generated_associations = Syncify::IdentifyAssociations.run!(klass: Assembly)
+
+    expect(generated_associations).to eq(:parts)
+  end
 end
