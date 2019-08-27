@@ -259,6 +259,7 @@ RSpec.describe Syncify::IdentifyAssociations do
         t.belongs_to :part
       end
     end
+    # This example was totally stolen from rails guides.
     class Assembly < ActiveRecord::Base
       has_and_belongs_to_many :parts
     end
@@ -270,4 +271,48 @@ RSpec.describe Syncify::IdentifyAssociations do
 
     expect(generated_associations).to eq(:parts)
   end
+
+  context 'with polymorphic associations' do
+    it 'does something' do
+      ActiveRecord::Schema.define do
+        create_table :pictures do |t|
+          t.references :imageable, polymorphic: true
+        end
+        create_table :employees do |t|
+          t.references :region
+        end
+        create_table :gizmos do |t|
+          t.references :region
+        end
+        create_table :regions
+      end
+      class Picture < ActiveRecord::Base
+        belongs_to :imageable, polymorphic: true
+      end
+      class Employee < ActiveRecord::Base
+        has_many :pictures, as: :imageable
+        has_one :region
+      end
+      class Gizmo < ActiveRecord::Base
+        has_many :pictures, as: :imageable
+      end
+      class Region < ActiveRecord::Base;
+      end
+      Employee.create(pictures: [Picture.new])
+      Gizmo.create(pictures: [Picture.new])
+      
+      generated_associations = Syncify::IdentifyAssociations.run!(klass: Picture)
+
+      expect(generated_associations).to be_a(Syncify::PolymorphicAssociation)
+      expect(generated_associations.property).to eq(:imageable)
+      expect(generated_associations.associations).to eq(Employee => :region,
+                                                        Gizmo => nil)
+    end
+  end
+
+    # context 'with circular associations' do
+    #   it 'does not blow up' do
+    #     fail
+    #   end
+    # end
 end
