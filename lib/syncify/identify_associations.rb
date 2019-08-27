@@ -21,7 +21,7 @@ module Syncify
     end
 
     def nested_associations?(association)
-      associated_class = association.class_name.constantize
+      associated_class = association.klass
       associated_class.reflect_on_all_associations.any?
     end
 
@@ -31,6 +31,7 @@ module Syncify
         select(association.foreign_type).
         distinct.
         pluck(association.foreign_type).
+        compact.
         map(&:constantize)
 
       Syncify::PolymorphicAssociation.new(
@@ -47,7 +48,7 @@ module Syncify
 
     def describe_nested_associations(association)
       associated_associations = IdentifyAssociations.run!(
-        klass: association.class_name.constantize,
+        klass: association.klass,
         referral_chain: [*referral_chain, klass]
       )
       return association.name if associated_associations.nil?
@@ -57,7 +58,7 @@ module Syncify
 
     def exists_in_referral_chain?(association)
       return false if association.polymorphic?
-      referral_chain.include? association.class_name.constantize
+      referral_chain.include? association.klass
     end
 
     def ignored_association?(association)
