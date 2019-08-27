@@ -273,7 +273,7 @@ RSpec.describe Syncify::IdentifyAssociations do
   end
 
   context 'with polymorphic associations' do
-    it 'does something' do
+    it 'generates a valid polymorphic association description' do
       ActiveRecord::Schema.define do
         create_table :pictures do |t|
           t.references :imageable, polymorphic: true
@@ -300,7 +300,7 @@ RSpec.describe Syncify::IdentifyAssociations do
       end
       Employee.create(pictures: [Picture.new])
       Gizmo.create(pictures: [Picture.new])
-      
+
       generated_associations = Syncify::IdentifyAssociations.run!(klass: Picture)
 
       expect(generated_associations).to be_a(Syncify::PolymorphicAssociation)
@@ -310,9 +310,45 @@ RSpec.describe Syncify::IdentifyAssociations do
     end
   end
 
-    # context 'with circular associations' do
-    #   it 'does not blow up' do
-    #     fail
-    #   end
-    # end
+  context 'with circular associations' do
+    it 'does not get stuck in an infinite loop' do
+      ActiveRecord::Schema.define do
+        create_table :projects do |t|
+          t.references :participant, foreign_key: true
+          t.references :group, foreign_key: true
+        end
+        create_table :participants do |t|
+          t.references :group
+        end
+        create_table :groups
+      end
+
+      class Project < ActiveRecord::Base
+        belongs_to :participant
+        belongs_to :group
+      end
+      class Participant < ActiveRecord::Base
+        has_many :projects
+        belongs_to :group
+      end
+      class Group < ActiveRecord::Base
+        has_many :participants
+      end
+
+      expected_associations = [
+        { participant: :group },
+        { group: :participants }
+      ]
+
+      generated_associations = Syncify::IdentifyAssociations.run!(klass: Project)
+
+      expect(generated_associations).to eq(expected_associations)
+    end
+  end
+
+  # it 'does not get stuck in an infinite loop' do
+  #   binding.pry
+  #   Syncify::IdentifyAssociations.run!(klass: Campaign)
+  # end
+
 end

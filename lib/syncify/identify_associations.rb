@@ -1,7 +1,7 @@
 module Syncify
   class IdentifyAssociations < ActiveInteraction::Base
     object :klass, class: Class
-    object :referrer_class, class: Class, default: nil
+    object :referral_chain, class: Array, default: []
 
     def execute
       return nil if associations.empty?
@@ -13,6 +13,7 @@ module Syncify
     private
 
     def describe_association(association)
+      # puts ">>>> #{referral_chain.map(&:name)}->#{klass} // #{association.name}"
       return describe_polymorphic_association(association) if association.polymorphic?
       return describe_nested_associations(association) if nested_associations?(association)
 
@@ -37,7 +38,7 @@ module Syncify
         polymorphic_associated_classes.inject({}) do |mappings, foreign_class|
           mappings[foreign_class] = IdentifyAssociations.run!(
             klass: foreign_class,
-            referrer_class: klass
+            referral_chain: [*referral_chain, klass]
           )
           mappings
         end
@@ -47,16 +48,16 @@ module Syncify
     def describe_nested_associations(association)
       associated_associations = IdentifyAssociations.run!(
         klass: association.class_name.constantize,
-        referrer_class: klass
+        referral_chain: [*referral_chain, klass]
       )
       return association.name if associated_associations.nil?
 
       { association.name => associated_associations }
     end
 
-    def associated_to_referrer_class?(association)
+    def exists_in_referral_chain?(association)
       return false if association.polymorphic?
-      association.class_name.constantize == referrer_class
+      referral_chain.include? association.class_name.constantize
     end
 
     def ignored_association?(association)
@@ -68,7 +69,7 @@ module Syncify
     def associations
       @associations ||= klass.reflect_on_all_associations.
         reject(&method(:ignored_association?)).
-        reject(&method(:associated_to_referrer_class?)).
+        reject(&method(:exists_in_referral_chain?)).
         map(&method(:describe_association))
     end
   end
