@@ -1,86 +1,68 @@
 module Syncify
   class IdentifyAssociations < ActiveInteraction::Base
     object :klass, class: Class
-    object :referral_chain, class: Array, default: []
-    object :cache, class: Hash, default: {}
 
     def execute
-      return nil if associations.empty?
-      return associations.first if associations.size == 1
+      identified_associations = {}
+      @inspections_queue = []
 
-      associations
+      queue_for_inspection(klass, identified_associations)
+      @inspections_queue.each do |association_to_inspect|
+        associated_class = association_to_inspect[:associated_class]
+        destination = association_to_inspect[:destination]
+        queue_for_inspection(associated_class, destination)
+      end
+
+      simplify_identified_associations(identified_associations)
     end
 
     private
 
-    def describe_association(association)
-      chain_key = [klass.name, association.name]
-      cache[chain_key] ||= begin
-        puts ">>>> #{chain_key}"
-        if association.polymorphic?
-          describe_polymorphic_association(association)
-        elsif nested_associations?(association)
-          describe_nested_associations(association)
-        else
-          association.name
-        end
+    def simplify_identified_associations(associations)
+      simplified_associations = associations.each.reduce([]) do |memo, (association, nested_association)|
+        simplified_association = if nested_association.empty?
+                                   association
+                                 else
+                                   { association => simplify_identified_associations(nested_association) }
+                                 end
+
+        memo << simplified_association
+
+        memo
       end
+
+      return simplified_associations.first if simplified_associations.size == 1
+      return nil if simplified_associations.empty?
+
+      simplified_associations
     end
 
-    def nested_associations?(association)
-      associated_class = association.klass
-      associated_class.reflect_on_all_associations.any?
-    end
+    def queue_for_inspection(klass, associations)
+      klass.reflect_on_all_associations.
+        reject(&method(:ignored_association?)).
+        each do |association|
 
-    def describe_polymorphic_association(association)
-      polymorphic_associated_classes = cache[[klass, association.name]] ||= association.
-        active_record.
-        select(association.foreign_type).
-        distinct.
-        pluck(association.foreign_type).
-        compact.
-        map(&:constantize)
+        # look for a hash in the inspection queue where the associated_class is the klass
+        next if @inspections_queue.find { |assoc| assoc[:associated_class] == klass && assoc[:referred_to_by].include?(association.klass) }
 
-      Syncify::PolymorphicAssociation.new(
-        association.name,
-        polymorphic_associated_classes.inject({}) do |mappings, foreign_class|
-          mappings[foreign_class] = IdentifyAssociations.run!(
-            klass: foreign_class,
-            referral_chain: [*referral_chain, klass],
-            cache: cache
-          )
-          mappings
-        end
-      )
-    end
+        print '.'
 
-    def describe_nested_associations(association)
-      associated_associations = IdentifyAssociations.run!(
-        klass: association.klass,
-        referral_chain: [*referral_chain, klass],
-        cache: cache
-      )
-      return association.name if associated_associations.nil?
+        destination = associations[association.name] = {}
 
-      { association.name => associated_associations }
-    end
+        association_to_inspect = @inspections_queue.find { |assoc| assoc[:associated_class] == association.klass }
+        association_to_inspect ||= { associated_class: association.klass, destination: destination }
 
-    def exists_in_referral_chain?(association)
-      return false if association.polymorphic?
-      referral_chain.include? association.klass
+        association_to_inspect[:referred_to_by] ||= []
+        association_to_inspect[:referred_to_by] << klass
+
+        @inspections_queue << association_to_inspect unless @inspections_queue.include?(association_to_inspect)
+      end
     end
 
     def ignored_association?(association)
       return true if association.class == ActiveRecord::Reflection::ThroughReflection
 
       false
-    end
-
-    def associations
-      @associations ||= klass.reflect_on_all_associations.
-        reject(&method(:ignored_association?)).
-        reject(&method(:exists_in_referral_chain?)).
-        map(&method(:describe_association))
     end
   end
 end

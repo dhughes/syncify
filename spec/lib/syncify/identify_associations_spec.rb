@@ -376,7 +376,7 @@ RSpec.describe Syncify::IdentifyAssociations do
 
       expected_associations = [
         { participant: :group },
-        { group: :participants }
+        :group
       ]
 
       generated_associations = Syncify::IdentifyAssociations.run!(klass: Project)
@@ -386,8 +386,7 @@ RSpec.describe Syncify::IdentifyAssociations do
   end
 
   # it 'does not get stuck in an infinite loop' do
-  #   binding.pry
-  #   Syncify::IdentifyAssociations.run!(klass: Campaign)
+  #   puts Syncify::IdentifyAssociations.run!(klass: Campaign)
   # end
 
 end
