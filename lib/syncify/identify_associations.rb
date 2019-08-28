@@ -2,6 +2,7 @@ module Syncify
   class IdentifyAssociations < ActiveInteraction::Base
     object :klass, class: Class
     object :referral_chain, class: Array, default: []
+    object :cache, class: Hash, default: {}
 
     def execute
       return nil if associations.empty?
@@ -13,11 +14,17 @@ module Syncify
     private
 
     def describe_association(association)
-      # puts ">>>> #{referral_chain.map(&:name)}->#{klass} // #{association.name}"
-      return describe_polymorphic_association(association) if association.polymorphic?
-      return describe_nested_associations(association) if nested_associations?(association)
-
-      association.name
+      chain_key = [klass.name, association.name]
+      cache[chain_key] ||= begin
+        puts ">>>> #{chain_key}"
+        if association.polymorphic?
+          describe_polymorphic_association(association)
+        elsif nested_associations?(association)
+          describe_nested_associations(association)
+        else
+          association.name
+        end
+      end
     end
 
     def nested_associations?(association)
@@ -26,7 +33,7 @@ module Syncify
     end
 
     def describe_polymorphic_association(association)
-      polymorphic_associated_classes = association.
+      polymorphic_associated_classes = cache[[klass, association.name]] ||= association.
         active_record.
         select(association.foreign_type).
         distinct.
@@ -39,7 +46,8 @@ module Syncify
         polymorphic_associated_classes.inject({}) do |mappings, foreign_class|
           mappings[foreign_class] = IdentifyAssociations.run!(
             klass: foreign_class,
-            referral_chain: [*referral_chain, klass]
+            referral_chain: [*referral_chain, klass],
+            cache: cache
           )
           mappings
         end
@@ -49,7 +57,8 @@ module Syncify
     def describe_nested_associations(association)
       associated_associations = IdentifyAssociations.run!(
         klass: association.klass,
-        referral_chain: [*referral_chain, klass]
+        referral_chain: [*referral_chain, klass],
+        cache: cache
       )
       return association.name if associated_associations.nil?
 
