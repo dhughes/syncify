@@ -2,21 +2,32 @@ module Syncify
   class IdentifyAssociations < ActiveInteraction::Base
     object :klass, class: Class
 
+    attr_accessor :inspections_queue
+
     def execute
-      identified_associations = {}
       @inspections_queue = []
 
-      queue_for_inspection(klass, identified_associations)
-      @inspections_queue.each do |association_to_inspect|
-        associated_class = association_to_inspect[:associated_class]
-        destination = association_to_inspect[:destination]
-        queue_for_inspection(associated_class, destination)
-      end
-
-      simplify_identified_associations(identified_associations)
+      simplify_identified_associations(identify_associations)
     end
 
     private
+
+    def identify_associations
+      identified_associations = {}
+
+      queue_for_inspection(klass, identified_associations)
+      inspect_queue
+
+      identified_associations
+    end
+
+    def inspect_queue
+      inspections_queue.each do |association_to_inspect|
+        class_to_inspect = association_to_inspect.class_to_inspect
+        destination = association_to_inspect.destination
+        queue_for_inspection(class_to_inspect, destination)
+      end
+    end
 
     def simplify_identified_associations(associations)
       simplified_associations = associations.each.reduce([]) do |memo, (association, nested_association)|
@@ -37,25 +48,45 @@ module Syncify
       simplified_associations
     end
 
-    def queue_for_inspection(klass, associations)
-      klass.reflect_on_all_associations.
+    def queue_for_inspection(class_to_inspect, identified_associations_subset)
+      class_to_inspect.reflect_on_all_associations.
         reject(&method(:ignored_association?)).
-        each do |association|
+        each do |association_to_inspect|
 
-        # look for a hash in the inspection queue where the associated_class is the klass
-        next if @inspections_queue.find { |assoc| assoc[:associated_class] == klass && assoc[:referred_to_by].include?(association.klass) }
+        # skip this inspection if this is a reciprocal association (EG: a belongs_to for a has_many)
+        next if reciprocal?(association_to_inspect)
 
-        print '.'
+        print '.' # TODO: delete this line
 
-        destination = associations[association.name] = {}
+        # if association.polymorphic?
+        #   binding.pry
+        # end
 
-        association_to_inspect = @inspections_queue.find { |assoc| assoc[:associated_class] == association.klass }
-        association_to_inspect ||= { associated_class: association.klass, destination: destination }
+        # this is the location in the set of overall set of identified association where any
+        # nested associations from this class being inspected are to be placed. Basically, this is
+        # where the magic of building out or associations happens.
+        destination = identified_associations_subset[association_to_inspect.name] = {}
 
-        association_to_inspect[:referred_to_by] ||= []
-        association_to_inspect[:referred_to_by] << klass
+        # This is a queued association to inspect for this association's target class. (It may have
+        # already been inspected!) If we can't find one, we create one.
+        queued_association = find_or_create_queued_association(association_to_inspect.klass,
+                                                               destination)
+        # Record that the class we're inspecting referred to the referred-to class. We need this so
+        # we can detect reciprocal associations.
+        queued_association.referring_classes << class_to_inspect
 
-        @inspections_queue << association_to_inspect unless @inspections_queue.include?(association_to_inspect)
+        inspections_queue << queued_association unless inspections_queue.include?(queued_association)
+      end
+    end
+
+    def find_or_create_queued_association(referred_to_class, destination)
+      inspections_queue.find { |association| association.for_class?(referred_to_class) } ||
+        QueuedAssociation.new(class_to_inspect: referred_to_class, destination: destination)
+    end
+
+    def reciprocal?(association)
+      inspections_queue.find do |queued_association|
+        queued_association.reciprocal?(association)
       end
     end
 
