@@ -385,8 +385,8 @@ RSpec.describe Syncify::IdentifyAssociations do
     end
   end
 
-  # it 'does not get stuck in an infinite loop' do
-  #   puts Syncify::IdentifyAssociations.run!(klass: Campaign)
-  # end
+    # it 'does not get stuck in an infinite loop' do
+    #   puts Syncify::IdentifyAssociations.run!(klass: Campaign)
+    # end
 
 end

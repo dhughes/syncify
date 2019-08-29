@@ -5,7 +5,7 @@ module Syncify
     attr_accessor :property
     attr_accessor :associations
 
-    def initialize(property, associations)
+    def initialize(property, associations = {})
       @property = property
       @associations = associations
     end

@@ -31,7 +31,9 @@ module Syncify
 
     def simplify_identified_associations(associations)
       simplified_associations = associations.each.reduce([]) do |memo, (association, nested_association)|
-        simplified_association = if nested_association.empty?
+        simplified_association = if nested_association.is_a? PolymorphicAssociation
+                                   nested_association
+                                 elsif nested_association.empty?
                                    association
                                  else
                                    { association => simplify_identified_associations(nested_association) }
@@ -58,25 +60,51 @@ module Syncify
 
         print '.' # TODO: delete this line
 
-        # if association.polymorphic?
-        #   binding.pry
+        # if association_to_inspect.polymorphic?
+        #   queue_polymoprphic_association(class_to_inspect, association_to_inspect, identified_associations_subset)
+        # else
+          queue_standard_association(class_to_inspect, association_to_inspect, identified_associations_subset)
         # end
-
-        # this is the location in the set of overall set of identified association where any
-        # nested associations from this class being inspected are to be placed. Basically, this is
-        # where the magic of building out or associations happens.
-        destination = identified_associations_subset[association_to_inspect.name] = {}
-
-        # This is a queued association to inspect for this association's target class. (It may have
-        # already been inspected!) If we can't find one, we create one.
-        queued_association = find_or_create_queued_association(association_to_inspect.klass,
-                                                               destination)
-        # Record that the class we're inspecting referred to the referred-to class. We need this so
-        # we can detect reciprocal associations.
-        queued_association.referring_classes << class_to_inspect
-
-        inspections_queue << queued_association unless inspections_queue.include?(queued_association)
       end
+    end
+
+    def queue_polymoprphic_association(class_to_inspect, association_to_inspect, identified_associations_subset)
+      polymorphic_associations = {}
+
+      identified_associations_subset[association_to_inspect.name] = PolymorphicAssociation.new(
+        association_to_inspect.name,
+        polymorphic_associations
+      )
+
+      class_to_inspect.
+        pluck(association_to_inspect.foreign_type).
+        uniq.
+        map(&:constantize).
+        inject(polymorphic_associations) do |polymorphic_associations, type|
+
+        polymorphic_associations[type] = {}
+
+        queue_for_inspection(type, polymorphic_associations[type])
+
+        polymorphic_associations
+      end
+    end
+
+    def queue_standard_association(class_to_inspect, association_to_inspect, identified_associations_subset)
+      # this is the location in the set of overall set of identified association where any
+      # nested associations from this class being inspected are to be placed. Basically, this is
+      # where the magic of building out or associations tree happens.
+      destination = identified_associations_subset[association_to_inspect.name] = {}
+
+      # This is a queued association to inspect for this association's target class. (It may have
+      # already been inspected!) If we can't find one, we create one.
+      queued_association = find_or_create_queued_association(association_to_inspect.klass,
+                                                             destination)
+      # Record that the class we're inspecting referred to the referred-to class. We need this so
+      # we can detect reciprocal associations.
+      queued_association.referring_classes << class_to_inspect
+
+      inspections_queue << queued_association unless inspections_queue.include?(queued_association)
     end
 
     def find_or_create_queued_association(referred_to_class, destination)
