@@ -273,82 +273,82 @@ RSpec.describe Syncify::IdentifyAssociations do
     expect(generated_associations).to eq(:parts)
   end
 
-  context 'with polymorphic associations' do
-    it 'generates a valid polymorphic association description' do
-      ActiveRecord::Schema.define do
-        create_table :pictures do |t|
-          t.references :imageable, polymorphic: true
-        end
-        create_table :employees do |t|
-          t.references :region
-        end
-        create_table :gizmos do |t|
-          t.references :region
-        end
-        create_table :regions
-      end
-      class Picture < ActiveRecord::Base
-        belongs_to :imageable, polymorphic: true
-      end
-      class Employee < ActiveRecord::Base
-        has_many :pictures, as: :imageable
-        has_one :region
-      end
-      class Gizmo < ActiveRecord::Base
-        has_many :pictures, as: :imageable
-      end
-      class Region < ActiveRecord::Base;
-      end
-      Employee.create(pictures: [Picture.new])
-      Gizmo.create(pictures: [Picture.new])
-
-      generated_associations = Syncify::IdentifyAssociations.run!(klass: Picture)
-
-      expect(generated_associations).to be_a(Syncify::PolymorphicAssociation)
-      expect(generated_associations.property).to eq(:imageable)
-      expect(generated_associations.associations).to eq(Employee => :region,
-                                                        Gizmo => nil)
-    end
-
-    context 'when there is a nil reference' do
-      it 'ignores the nil reference type' do
-        ActiveRecord::Schema.define do
-          create_table :pictures do |t|
-            t.references :imageable, polymorphic: true
-          end
-          create_table :employees do |t|
-            t.references :region
-          end
-          create_table :gizmos do |t|
-            t.references :region
-          end
-          create_table :regions
-        end
-        class Picture < ActiveRecord::Base
-          belongs_to :imageable, polymorphic: true
-        end
-        class Employee < ActiveRecord::Base
-          has_many :pictures, as: :imageable
-          has_one :region
-        end
-        class Gizmo < ActiveRecord::Base
-          has_many :pictures, as: :imageable
-        end
-        class Region < ActiveRecord::Base;
-        end
-        Employee.create(pictures: [Picture.new])
-        Gizmo.create(pictures: [Picture.new])
-        Picture.create
-
-        generated_associations = Syncify::IdentifyAssociations.run!(klass: Picture)
-
-        expect(generated_associations).to be_a(Syncify::PolymorphicAssociation)
-        expect(generated_associations.property).to eq(:imageable)
-        expect(generated_associations.associations).to eq(Employee => :region,
-                                                          Gizmo => nil)
-      end
-    end
-  end
+  # context 'with polymorphic associations' do
+  #   it 'generates a valid polymorphic association description' do
+  #     ActiveRecord::Schema.define do
+  #       create_table :pictures do |t|
+  #         t.references :imageable, polymorphic: true
+  #       end
+  #       create_table :employees do |t|
+  #         t.references :region
+  #       end
+  #       create_table :gizmos do |t|
+  #         t.references :region
+  #       end
+  #       create_table :regions
+  #     end
+  #     class Picture < ActiveRecord::Base
+  #       belongs_to :imageable, polymorphic: true
+  #     end
+  #     class Employee < ActiveRecord::Base
+  #       has_many :pictures, as: :imageable
+  #       has_one :region
+  #     end
+  #     class Gizmo < ActiveRecord::Base
+  #       has_many :pictures, as: :imageable
+  #     end
+  #     class Region < ActiveRecord::Base;
+  #     end
+  #     Employee.create(pictures: [Picture.new])
+  #     Gizmo.create(pictures: [Picture.new])
+  #
+  #     generated_associations = Syncify::IdentifyAssociations.run!(klass: Picture)
+  #
+  #     expect(generated_associations).to be_a(Syncify::PolymorphicAssociation)
+  #     expect(generated_associations.property).to eq(:imageable)
+  #     expect(generated_associations.associations).to eq(Employee => :region,
+  #                                                       Gizmo => nil)
+  #   end
+  #
+  #   context 'when there is a nil reference' do
+  #     it 'ignores the nil reference type' do
+  #       ActiveRecord::Schema.define do
+  #         create_table :pictures do |t|
+  #           t.references :imageable, polymorphic: true
+  #         end
+  #         create_table :employees do |t|
+  #           t.references :region
+  #         end
+  #         create_table :gizmos do |t|
+  #           t.references :region
+  #         end
+  #         create_table :regions
+  #       end
+  #       class Picture < ActiveRecord::Base
+  #         belongs_to :imageable, polymorphic: true
+  #       end
+  #       class Employee < ActiveRecord::Base
+  #         has_many :pictures, as: :imageable
+  #         has_one :region
+  #       end
+  #       class Gizmo < ActiveRecord::Base
+  #         has_many :pictures, as: :imageable
+  #       end
+  #       class Region < ActiveRecord::Base;
+  #       end
+  #       Employee.create(pictures: [Picture.new])
+  #       Gizmo.create(pictures: [Picture.new])
+  #       Picture.create
+  #
+  #       generated_associations = Syncify::IdentifyAssociations.run!(klass: Picture)
+  #
+  #       expect(generated_associations).to be_a(Syncify::PolymorphicAssociation)
+  #       expect(generated_associations.property).to eq(:imageable)
+  #       expect(generated_associations.associations).to eq(Employee => :region,
+  #                                                         Gizmo => nil)
+  #     end
+  #   end
+  # end
 
   context 'with circular associations' do
     it 'does not get stuck in an infinite loop' do

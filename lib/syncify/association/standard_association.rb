@@ -15,7 +15,15 @@ module Syncify
         traversed
       end
 
-      def equal?(other_association)
+      def create_destination(name)
+        destination[name] = {}
+      end
+
+      def hash
+        "#{self.from_class.to_s}#{self.to_class.to_s}#{self.name}".hash
+      end
+
+      def eql?(other_association)
         self.from_class == other_association.from_class &&
           self.to_class == other_association.to_class &&
           self.name == other_association.name
