@@ -149,6 +149,7 @@ RSpec.describe Syncify::IdentifyAssociations do
         t.references :state
       end
     end
+
     class Country < ActiveRecord::Base
       has_many :states
       has_many :counties, through: :states
