@@ -3,16 +3,28 @@ module Syncify
     class StandardAssociation
       attr_accessor :from_class, :to_class, :name, :destination, :traversed
 
-      def initialize(from_class:, to_class:, name:, destination:)
+      def initialize(from_class:, association:, destination:)
         @from_class = from_class
-        @to_class = to_class
-        @name = name
+        @to_class = association.klass
+        @name = association.name
         @destination = destination
         @traversed = false
       end
 
+      def polymorphic?
+        false
+      end
+
       def traversed?
         traversed
+      end
+
+      def inverse_of?(association)
+        if association.polymorphic?
+          association.to_classes.include?(from_class) && association.from_class == to_class
+        else
+          association.to_class == from_class && association.from_class == to_class
+        end
       end
 
       def create_destination(name)

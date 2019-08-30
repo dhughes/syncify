@@ -17,7 +17,9 @@ module Syncify
 
     def simplify_associations(associations)
       simplified_associations = associations.each.reduce([]) do |memo, (association, nested_association)|
-        simplified_association = if nested_association.empty?
+        simplified_association = if association.is_a? Class
+                                   { association => simplify_associations(nested_association) }
+                                 elsif nested_association.empty?
                                    association
                                  else
                                    { association => simplify_associations(nested_association) }
@@ -27,6 +29,9 @@ module Syncify
         memo
       end
 
+      if simplified_associations.map(&:class).uniq == [Hash]
+        return simplified_associations.inject({}) { |memo, association| memo.merge(association) }
+      end
       return simplified_associations.first if simplified_associations.size == 1
       return nil if simplified_associations.empty?
 
@@ -36,14 +41,19 @@ module Syncify
     def identify_associations(from_class, destination)
       applicable_associations(from_class).each do |association|
         # TODO: add support for polymorphic associations
-        next if association.polymorphic?
-
-        pending_association = Syncify::Association::StandardAssociation.new(
-          from_class: from_class,
-          to_class: association.klass,
-          name: association.name,
-          destination: destination
-        )
+        pending_association = if association.polymorphic?
+                                Syncify::Association::PolymorphicAssociation.new(
+                                  from_class: from_class,
+                                  association: association,
+                                  destination: destination
+                                )
+                              else
+                                Syncify::Association::StandardAssociation.new(
+                                  from_class: from_class,
+                                  association: association,
+                                  destination: destination
+                                )
+                              end
 
         association_registry << pending_association unless inverse_of_another_association?(pending_association)
       end
@@ -53,10 +63,20 @@ module Syncify
       while (association = next_untraversed_association)
         association.traversed = true
 
-        identify_associations(
-          association.to_class,
-          association.create_destination(association.name)
-        )
+        # TODO: handle this correctly
+        if association.polymorphic?
+          association.to_classes.each do |to_class|
+            identify_associations(
+              to_class,
+              association.create_destination(to_class)
+            )
+          end
+        else
+          identify_associations(
+            association.to_class,
+            association.create_destination(association.name)
+          )
+        end
       end
 
       identified_associations
@@ -74,8 +94,7 @@ module Syncify
 
     def inverse_of_another_association?(association)
       association_registry.find do |registered_association|
-        association.to_class == registered_association.from_class &&
-          association.from_class == registered_association.to_class
+        association.inverse_of?(registered_association)
       end
     end
 
