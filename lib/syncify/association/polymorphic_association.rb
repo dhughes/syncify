@@ -24,8 +24,8 @@ module Syncify
       end
 
       def inverse_of?(association)
-        # TODO: implement this for real
-        true
+        from_class == association.to_class &&
+          to_classes.include?(association.from_class)
       end
 
       def create_destination(name)
@@ -37,6 +37,7 @@ module Syncify
       end
 
       def eql?(other_association)
+        return false unless other_association.is_a? PolymorphicAssociation
         self.from_class == other_association.from_class &&
           self.to_classes == other_association.to_classes &&
           self.name == other_association.name

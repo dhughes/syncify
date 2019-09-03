@@ -190,33 +190,33 @@ RSpec.describe Syncify::NormalizeAssociations do
 
   context 'when the association is not a hash, array, or symbol' do
     it 'returns the association wrapped in an array' do
-      association = Syncify::PolymorphicAssociation.new(
-        :reference_object,
-        AdvertiserProfile => :ad_configs
-      )
+      association = { reference_object: {
+        Agent => :listings
+      } }
+      expected_normalized = [{ reference_object: { Agent => { listings: {} } } }]
 
       normalized_association = Syncify::NormalizeAssociations.run!(association: association)
 
-      expect(normalized_association).to eq([association])
+      expect(normalized_association).to eq(expected_normalized)
     end
 
     context 'when the association is complex' do
       it 'returns the association with the polymorphic association in place' do
         association = [
-          { campaign_products: [:transactions] },
-          Syncify::PolymorphicAssociation.new(
-            :reference_object,
-            AdvertiserProfile => {},
-            Partner::Listing => {}
-          )
+          { products: [:order] },
+          { reference_object: {
+            Agent => :listings,
+            Listing => {}
+          } }
         ]
 
         normalized_association = Syncify::NormalizeAssociations.run!(association: association)
 
         expect(normalized_association).
           to eq([
-                  { campaign_products: { transactions: {} } },
-                  association[1]
+                  { products: { order: {} } },
+                  { reference_object: { Agent => { listings: {} } } },
+                  { reference_object: { Listing => {} } }
                 ])
       end
     end
