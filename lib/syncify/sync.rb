@@ -61,11 +61,16 @@ module Syncify
       standard_associations = associations.reject(&method(:includes_polymorphic_association))
       polymorphic_associations = associations.select(&method(:includes_polymorphic_association))
 
+      puts ">>>> Beginning to sync standard associations..."
       standard_associations.each do |association|
+        puts ">>>> Identifying data for association: #{association}"
         traverse_associations(root.class.eager_load(association).find(root.id), association)
       end
+      puts ">>>> Done syncing standard associations!"
 
+      puts ">>>> Beginning to sync polymorphic associations..."
       identify_polymorphic_associated_records(root, polymorphic_associations)
+      puts ">>>> Done syncing polymorphic associations!"
     end
 
     def identify_polymorphic_associated_records(root, polymorphic_associations)
@@ -96,6 +101,7 @@ module Syncify
 
       records.each do |record|
         associations.each do |association, nested_associations|
+          puts ">>>> Traversing association: #{association} (#{nested_associations.size} nested)"
           if through_association?(record, association)
             traverse_associations(
               record.__send__(
@@ -180,7 +186,9 @@ module Syncify
     end
 
     def normalized_associations(association)
+      puts ">>>> Normalizing Associations..."
       Syncify::NormalizeAssociations.run!(association: association)
+      puts ">>>> Normalizing Associations Done!"
     end
 
     def remote
