@@ -75,21 +75,14 @@ module Syncify
 
     def identify_polymorphic_associated_records(root, polymorphic_associations)
       polymorphic_associations.each do |polymorphic_association|
-        if polymorphic_association.is_a?(Hash)
-          polymorphic_association.each do |key, association|
-            Array.wrap(root.__send__(key)).each do |target|
-              identify_polymorphic_associated_records(target, Array.wrap(association))
-            end
-          end
-        else
-          target = root.__send__(polymorphic_association.property)
-          next if target.nil?
-          type = polymorphic_association.associations.keys.detect do |association_type|
-            target.is_a?(association_type)
-          end
-          associations = polymorphic_association.associations[type]
-          identify_associated_records(target, normalized_associations(associations))
-        end
+        target = root.__send__(polymorphic_association.keys.first)
+        association = polymorphic_association.values.first
+        association_type = association.keys.first
+
+        next unless target&.is_a? association_type
+
+        associations = association[association_type]
+        identify_associated_records(target, normalized_associations(associations))
       end
     end
 
@@ -182,12 +175,13 @@ module Syncify
     end
 
     def includes_polymorphic_association(association)
-      association.to_s.include?('Syncify::PolymorphicAssociation')
+      association.values.first.keys.first.is_a? Class
     end
 
     def normalized_associations(association)
       puts ">>>> Normalizing Associations..."
       Syncify::NormalizeAssociations.run!(association: association)
+    ensure
       puts ">>>> Normalizing Associations Done!"
     end
 
