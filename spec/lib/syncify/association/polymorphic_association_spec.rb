@@ -16,23 +16,6 @@ RSpec.describe Syncify::Association::PolymorphicAssociation do
 
       expect(association.to_classes).to eq([Agent, Listing])
     end
-
-    it 'creates the destinations in the specified destination' do
-      agent = create(:agent)
-      listing = create(:listing)
-      create(:campaign, reference_object: agent)
-      create(:campaign, reference_object: listing)
-      destination = {}
-
-      association = Syncify::Association::PolymorphicAssociation.new(
-        from_class: Campaign,
-        association: Campaign.reflect_on_association(:reference_object),
-        destination: destination
-      )
-
-      expect(destination[:reference_object]).to eq({})
-      expect(association.destinations).to be(destination[:reference_object])
-    end
   end
 
   describe '#inverse_of?' do
@@ -78,6 +61,25 @@ RSpec.describe Syncify::Association::PolymorphicAssociation do
 
         expect(polymorphic_association.inverse_of?(standard_association)).to eq(false)
       end
+    end
+  end
+
+  describe '#create_destination' do
+    it 'creates a destination for the polymorphic association as well as its various target types' do
+      agent = create(:agent)
+      listing = create(:listing)
+      create(:campaign, reference_object: agent)
+      create(:campaign, reference_object: listing)
+      destination = {}
+      association = Syncify::Association::PolymorphicAssociation.new(
+        from_class: Campaign,
+        association: Campaign.reflect_on_association(:reference_object),
+        destination: destination
+      )
+
+      association.create_destination(:test123)
+
+      expect(association.destination[:reference_object]).to eq({ test123: {} })
     end
   end
 
