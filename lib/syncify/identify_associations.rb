@@ -94,7 +94,7 @@ module Syncify
     end
 
     def inverse_of_another_association?(association)
-      association_registry.find do |registered_association|
+      association_registry.any? do |registered_association|
         association.inverse_of?(registered_association)
       end
     end

@@ -1,7 +1,7 @@
 module Syncify
   module Association
     class PolymorphicAssociation
-      attr_accessor :from_class, :to_classes, :name, :destinations, :traversed
+      attr_accessor :from_class, :to_classes, :name, :destination, :traversed
 
       def initialize(from_class:, association:, destination:)
         @from_class = from_class
@@ -15,7 +15,7 @@ module Syncify
           compact.
           map(&:constantize)
         @name = association.name
-        @destinations = destination[name] = {}
+        @destination = destination
         @traversed = false
       # rescue StandardError => e
       #   binding.pry
@@ -40,8 +40,9 @@ module Syncify
         end
       end
 
-      def create_destination(name)
-        destinations[name] = {}
+      def create_destination(association_name)
+        destination[name] ||= {}
+        destination[name][association_name] = {}
       end
 
       def hash
