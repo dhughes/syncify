@@ -94,7 +94,7 @@ module Syncify
 
       records.each do |record|
         associations.each do |association, nested_associations|
-          puts ">>>> Traversing association: #{association} (#{nested_associations.size} nested)"
+          puts ">>>> Traversing association: #{association}"
           if through_association?(record, association)
             traverse_associations(
               record.__send__(

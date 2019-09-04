@@ -1,6 +1,7 @@
 module Syncify
   class IdentifyAssociations < ActiveInteraction::Base
     object :klass, class: Class
+    symbol :remote_database, default: nil
 
     attr_accessor :association_registry, :identified_associations
 
@@ -8,7 +9,9 @@ module Syncify
       @association_registry = Set[]
       @identified_associations = {}
 
-      identify_associations(klass, identified_associations)
+      remote do
+        identify_associations(klass, identified_associations)
+      end
 
       simplify_associations(traverse_associations)
     end
@@ -105,6 +108,19 @@ module Syncify
       return true if association.class == ActiveRecord::Reflection::ThroughReflection
 
       false
+    end
+
+    # TODO: this is duplicated from Sync. Consider refactoring
+    def remote
+      run_in_environment(remote_database) { yield }
+    end
+
+    def run_in_environment(environment)
+      initial_config = ActiveRecord::Base.connection_config
+      ActiveRecord::Base.establish_connection environment
+      yield
+    ensure
+      ActiveRecord::Base.establish_connection initial_config
     end
   end
 end

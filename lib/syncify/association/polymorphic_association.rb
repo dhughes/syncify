@@ -5,14 +5,20 @@ module Syncify
 
       def initialize(from_class:, association:, destination:)
         @from_class = from_class
+        # TODO: is there a way to cache this so it doesn't get run over and over?
+        # TODO: here's a problem: we need to run this association check on the _remote_ DB. Otherwise, we might not have all the possible associations locally.
         @to_classes = association.active_record.
+          where("#{association.foreign_type} != ''").
+          distinct.
           pluck(association.foreign_type).
-          compact.
           uniq.
+          compact.
           map(&:constantize)
         @name = association.name
         @destinations = destination[name] = {}
         @traversed = false
+      # rescue StandardError => e
+      #   binding.pry
       end
 
       def polymorphic?
@@ -24,8 +30,14 @@ module Syncify
       end
 
       def inverse_of?(association)
-        from_class == association.to_class &&
-          to_classes.include?(association.from_class)
+        if association.polymorphic?
+          # TODO: I'm not 100% sure this is correct. I need to write a test.
+          association.to_classes.include?(from_class) &&
+            to_classes.include?(association.from_class)
+        else
+          from_class == association.to_class &&
+            to_classes.include?(association.from_class)
+        end
       end
 
       def create_destination(name)
