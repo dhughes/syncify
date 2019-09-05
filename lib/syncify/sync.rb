@@ -64,7 +64,14 @@ module Syncify
       puts ">>>> Beginning to sync standard associations..."
       standard_associations.each do |association|
         puts ">>>> Identifying data for association: #{association}"
-        traverse_associations(root.class.eager_load(association).find(root.id), association)
+        begin
+          traverse_associations(root.class.eager_load(association).find(root.id), association)
+        rescue StandardError => e
+          binding.pry
+          x = root.class.find(root.id)
+          x.next_subscription_plan
+
+        end
       end
       puts ">>>> Done syncing standard associations!"
 
@@ -175,7 +182,10 @@ module Syncify
     end
 
     def includes_polymorphic_association(association)
-      association.values.first.keys.first.is_a? Class
+      return false if association.nil?
+      return false if association == {}
+
+      association.values.first.keys.first.is_a?(Class) || includes_polymorphic_association(association.values.first)
     end
 
     def normalized_associations(association)

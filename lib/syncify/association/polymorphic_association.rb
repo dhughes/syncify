@@ -3,17 +3,24 @@ module Syncify
     class PolymorphicAssociation
       attr_accessor :from_class, :to_classes, :name, :destination, :traversed
 
-      def initialize(from_class:, association:, destination:)
-        @from_class = from_class
-        # TODO: is there a way to cache this so it doesn't get run over and over?
-        # TODO: here's a problem: we need to run this association check on the _remote_ DB. Otherwise, we might not have all the possible associations locally.
-        @to_classes = association.active_record.
+      def self.identify_to_classes(from_class, association_name)
+        association = from_class.reflect_on_association(association_name)
+        @cache ||= {}
+        @cache[from_class] ||= {}
+        @cache[from_class][association_name] ||= from_class.
           where("#{association.foreign_type} != ''").
           distinct.
           pluck(association.foreign_type).
           uniq.
           compact.
           map(&:constantize)
+      end
+
+      def initialize(from_class:, association:, destination:)
+        @from_class = from_class
+        # TODO: is there a way to cache this so it doesn't get run over and over?
+        # TODO: consider factoring this query out of here since it's duplicated in AssociationHint
+        @to_classes = Syncify::Association::PolymorphicAssociation.identify_to_classes(from_class, association.name)
         @name = association.name
         @destination = destination
         @traversed = false

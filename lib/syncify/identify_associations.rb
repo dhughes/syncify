@@ -2,6 +2,7 @@ module Syncify
   class IdentifyAssociations < ActiveInteraction::Base
     object :klass, class: Class
     symbol :remote_database, default: nil
+    array :hints, default: []
 
     attr_accessor :association_registry, :identified_associations
 
@@ -11,9 +12,9 @@ module Syncify
 
       remote do
         identify_associations(klass, identified_associations)
-      end
 
-      simplify_associations(traverse_associations)
+        simplify_associations(traverse_associations)
+      end
     end
 
     private
@@ -100,12 +101,11 @@ module Syncify
     end
 
     def ignored_association?(association)
-      # TODO: check if any hints explicitly allow this association. If so, return false.
-
-      # TODO: check if any hints explicitly disallow this association. If so, return true.
-
-      # TODO: extract this to a hint class? Maybe create an array of hints that we iterate through?
       return true if association.class == ActiveRecord::Reflection::ThroughReflection
+
+      hints.each do |hint|
+        return hint.allowed? if hint.applicable?(association)
+      end
 
       false
     end
