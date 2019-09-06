@@ -18,14 +18,10 @@ module Syncify
 
       def initialize(from_class:, association:, destination:)
         @from_class = from_class
-        # TODO: is there a way to cache this so it doesn't get run over and over?
-        # TODO: consider factoring this query out of here since it's duplicated in AssociationHint
         @to_classes = Syncify::Association::PolymorphicAssociation.identify_to_classes(from_class, association.name)
         @name = association.name
         @destination = destination
         @traversed = false
-      # rescue StandardError => e
-      #   binding.pry
       end
 
       def polymorphic?
@@ -38,7 +34,6 @@ module Syncify
 
       def inverse_of?(association)
         if association.polymorphic?
-          # TODO: I'm not 100% sure this is correct. I need to write a test.
           association.to_classes.include?(from_class) &&
             to_classes.include?(association.from_class)
         else

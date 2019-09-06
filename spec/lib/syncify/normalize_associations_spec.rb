@@ -193,7 +193,7 @@ RSpec.describe Syncify::NormalizeAssociations do
       association = { reference_object: {
         Agent => :listings
       } }
-      expected_normalized = [{ reference_object: { Agent => { listings: {} } } }]
+      expected_normalized = [{ reference_object: { Agent => :listings } }]
 
       normalized_association = Syncify::NormalizeAssociations.run!(association: association)
 
@@ -215,9 +215,58 @@ RSpec.describe Syncify::NormalizeAssociations do
         expect(normalized_association).
           to eq([
                   { products: { order: {} } },
-                  { reference_object: { Agent => { listings: {} } } },
-                  { reference_object: { Listing => {} } }
+                  { reference_object: { Agent => :listings, Listing => {} } },
                 ])
+      end
+    end
+
+    context 'when the association is complex' do
+      context 'when polymorphic associations defined as an array' do
+        it 'does not normalize children of polymorphic associations' do
+          association = [
+            { products: [:order] },
+            { reference_object: [
+              { Agent => [{ listing: { partner: :agents } },
+                          { office: [:state, :country] }] },
+              { Listing => {} }
+            ] }
+          ]
+
+          normalized_association = Syncify::NormalizeAssociations.run!(association: association)
+
+          expect(normalized_association).
+            to eq([
+                    { products: { order: {} } },
+                    { reference_object: { Agent => [{ listing: { partner: :agents } },
+                                                    { office: [:state, :country] }],
+                                          Listing => {} }
+                    },
+                  ])
+        end
+      end
+
+      context 'when polymorphic associations defined as a hash' do
+        it 'does not normalize children of polymorphic associations' do
+          association = [
+            { products: [:order] },
+            { reference_object: {
+              Agent => [{ listing: { partner: :agents } },
+                        { office: [:state, :country] }],
+              Listing => {}
+            } }
+          ]
+
+          normalized_association = Syncify::NormalizeAssociations.run!(association: association)
+
+          expect(normalized_association).
+            to eq([
+                    { products: { order: {} } },
+                    { reference_object: { Agent => [{ listing: { partner: :agents } },
+                                                    { office: [:state, :country] }],
+                                          Listing => {} }
+                    },
+                  ])
+        end
       end
     end
   end

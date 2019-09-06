@@ -17,14 +17,15 @@ module Syncify
           evaluate_to_class(candidate_association)
       end
 
-      def allowed?(candidate_association)
+      def allowed?
         allowed
       end
 
       private
 
       def evaluate_from(candidate_association)
-        from_class.nil? || candidate_association.active_record == from_class
+        from_class.nil? ||
+          Array.wrap(from_class).include?(candidate_association.active_record)
       end
 
       def evaluate_association(candidate_association)
@@ -46,9 +47,9 @@ module Syncify
             candidate_association.name
           )
 
-          associated_classes.include?(to_class)
+          (Array.wrap(to_class) & associated_classes).any?
         else
-          candidate_association.klass == to_class
+          Array.wrap(to_class).include?(candidate_association.klass)
         end
       end
     end

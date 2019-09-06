@@ -44,6 +44,7 @@ module Syncify
 
     def identify_associations(from_class, destination)
       applicable_associations(from_class).each do |association|
+        puts "Inspecting #{from_class.name}##{association.name}#{' '*50}"
         pending_association = if association.polymorphic?
                                 Syncify::Association::PolymorphicAssociation.new(
                                   from_class: from_class,
@@ -58,7 +59,7 @@ module Syncify
                                 )
                               end
 
-        association_registry << pending_association unless inverse_of_another_association?(pending_association)
+        association_registry << pending_association
       end
     end
 
@@ -94,17 +95,11 @@ module Syncify
         reject(&method(:ignored_association?))
     end
 
-    def inverse_of_another_association?(association)
-      association_registry.any? do |registered_association|
-        association.inverse_of?(registered_association)
-      end
-    end
-
     def ignored_association?(association)
       return true if association.class == ActiveRecord::Reflection::ThroughReflection
 
       hints.each do |hint|
-        return hint.allowed? if hint.applicable?(association)
+        return !hint.allowed? if hint.applicable?(association)
       end
 
       false

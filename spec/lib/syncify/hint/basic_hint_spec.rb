@@ -12,14 +12,32 @@ RSpec.describe Syncify::Hint::BasicHint do
     end
 
     context 'when applied to associations from a specific class' do
-      it 'indicates applicability based only on class name' do
-        hint = Syncify::Hint::BasicHint.new(from_class: Campaign, allowed: true)
+      context 'when a single class' do
+        it 'indicates applicability based only on class name' do
+          hint = Syncify::Hint::BasicHint.new(from_class: Campaign, allowed: true)
 
-        Campaign.reflect_on_all_associations.each do |association|
-          expect(hint.applicable?(association)).to eq(true)
+          Campaign.reflect_on_all_associations.each do |association|
+            expect(hint.applicable?(association)).to eq(true)
+          end
+          Partner.reflect_on_all_associations.each do |association|
+            expect(hint.applicable?(association)).to eq(false)
+          end
         end
-        Partner.reflect_on_all_associations.each do |association|
-          expect(hint.applicable?(association)).to eq(false)
+      end
+
+      context 'when an array of classes' do
+        it 'indicates applicability based only on class name' do
+          hint = Syncify::Hint::BasicHint.new(from_class: [Campaign, Partner], allowed: true)
+
+          Campaign.reflect_on_all_associations.each do |association|
+            expect(hint.applicable?(association)).to eq(true)
+          end
+          Partner.reflect_on_all_associations.each do |association|
+            expect(hint.applicable?(association)).to eq(true)
+          end
+          Vertical.reflect_on_all_associations.each do |association|
+            expect(hint.applicable?(association)).to eq(false)
+          end
         end
       end
     end
@@ -68,15 +86,50 @@ RSpec.describe Syncify::Hint::BasicHint do
     end
 
     context 'when applied to associations to a specific class' do
-      it 'indicates applicability only for associations to the specific class' do
-        hint = Syncify::Hint::BasicHint.new(to_class: Partner, allowed: false)
-        association1 = Vertical.reflect_on_association(:partners)
-        association2 = Campaign.reflect_on_association(:partner)
-        association3 = Campaign.reflect_on_association(:vertical)
+      context 'when a single class' do
+        it 'indicates applicability only for associations to the specific class' do
+          hint = Syncify::Hint::BasicHint.new(to_class: Partner, allowed: false)
+          association1 = Vertical.reflect_on_association(:partners)
+          association2 = Campaign.reflect_on_association(:partner)
+          association3 = Campaign.reflect_on_association(:vertical)
 
-        expect(hint.applicable?(association1)).to eq(true)
-        expect(hint.applicable?(association2)).to eq(true)
-        expect(hint.applicable?(association3)).to eq(false)
+          expect(hint.applicable?(association1)).to eq(true)
+          expect(hint.applicable?(association2)).to eq(true)
+          expect(hint.applicable?(association3)).to eq(false)
+        end
+      end
+
+      context 'when an array of classes' do
+        it 'indicates applicability only for associations to the specified classes' do
+          hint = Syncify::Hint::BasicHint.new(to_class: [Partner, Campaign], allowed: false)
+          association1 = Vertical.reflect_on_association(:partners)
+          association2 = Campaign.reflect_on_association(:partner)
+          association3 = Campaign.reflect_on_association(:vertical)
+          association4 = Partner.reflect_on_association(:campaigns)
+
+          expect(hint.applicable?(association1)).to eq(true)
+          expect(hint.applicable?(association2)).to eq(true)
+          expect(hint.applicable?(association3)).to eq(false)
+          expect(hint.applicable?(association4)).to eq(true)
+        end
+
+        context 'when association being tested is polymorphic' do
+          it 'does something' do
+            hint = Syncify::Hint::BasicHint.new(to_class: [Agent, Vertical], allowed: false)
+            association1 = Campaign.reflect_on_association(:reference_object)
+            association2 = Order.reflect_on_association(:owner)
+            agent = create(:agent)
+            listing = create(:listing, agent: agent)
+            campaign1 = create(:campaign, reference_object: listing)
+            campaign2 = create(:campaign, reference_object: agent)
+            order = create(:order)
+            product1 = create(:product_a, order: order)
+            product2 = create(:product_b, order: order)
+
+            expect(hint.applicable?(association1)).to eq(true)
+            expect(hint.applicable?(association2)).to eq(false)
+          end
+        end
       end
     end
 
@@ -143,12 +196,12 @@ RSpec.describe Syncify::Hint::BasicHint do
 
           Campaign.reflect_on_all_associations.each do |association|
             expect(hint.applicable?(association)).to eq(true)
-            expect(hint.allowed?(association)).to eq(false)
+            expect(hint.allowed?).to eq(false)
           end
 
           Partner.reflect_on_all_associations.each do |association|
             expect(hint.applicable?(association)).to eq(true)
-            expect(hint.allowed?(association)).to eq(false)
+            expect(hint.allowed?).to eq(false)
           end
         end
       end
@@ -159,7 +212,7 @@ RSpec.describe Syncify::Hint::BasicHint do
 
           Campaign.reflect_on_all_associations.each do |association|
             expect(hint.applicable?(association)).to eq(true)
-            expect(hint.allowed?(association)).to eq(false)
+            expect(hint.allowed?).to eq(false)
           end
         end
       end
@@ -172,9 +225,9 @@ RSpec.describe Syncify::Hint::BasicHint do
             association2 = Listing.reflect_on_association(:campaigns)
 
             expect(hint.applicable?(association1)).to eq(true)
-            expect(hint.allowed?(association1)).to eq(false)
+            expect(hint.allowed?).to eq(false)
             expect(hint.applicable?(association2)).to eq(true)
-            expect(hint.allowed?(association2)).to eq(false)
+            expect(hint.allowed?).to eq(false)
           end
         end
 
@@ -186,11 +239,11 @@ RSpec.describe Syncify::Hint::BasicHint do
             association3 = Partner.reflect_on_association(:products)
 
             expect(hint.applicable?(association1)).to eq(true)
-            expect(hint.allowed?(association1)).to eq(false)
+            expect(hint.allowed?).to eq(false)
             expect(hint.applicable?(association2)).to eq(true)
-            expect(hint.allowed?(association2)).to eq(false)
+            expect(hint.allowed?).to eq(false)
             expect(hint.applicable?(association3)).to eq(true)
-            expect(hint.allowed?(association3)).to eq(false)
+            expect(hint.allowed?).to eq(false)
           end
         end
 
@@ -201,9 +254,9 @@ RSpec.describe Syncify::Hint::BasicHint do
             association2 = Vertical.reflect_on_association(:partners)
 
             expect(hint.applicable?(association1)).to eq(true)
-            expect(hint.allowed?(association1)).to eq(false)
+            expect(hint.allowed?).to eq(false)
             expect(hint.applicable?(association2)).to eq(true)
-            expect(hint.allowed?(association2)).to eq(false)
+            expect(hint.allowed?).to eq(false)
           end
         end
       end
@@ -215,9 +268,9 @@ RSpec.describe Syncify::Hint::BasicHint do
           association2 = Campaign.reflect_on_association(:partner)
 
           expect(hint.applicable?(association1)).to eq(true)
-          expect(hint.allowed?(association1)).to eq(false)
+          expect(hint.allowed?).to eq(false)
           expect(hint.applicable?(association2)).to eq(true)
-          expect(hint.allowed?(association2)).to eq(false)
+          expect(hint.allowed?).to eq(false)
         end
       end
 
@@ -231,12 +284,12 @@ RSpec.describe Syncify::Hint::BasicHint do
 
           Campaign.reflect_on_all_associations.each do |association|
             expect(hint.applicable?(association)).to eq(true)
-            expect(hint.allowed?(association)).to eq(true)
+            expect(hint.allowed?).to eq(true)
           end
 
           Partner.reflect_on_all_associations.each do |association|
             expect(hint.applicable?(association)).to eq(true)
-            expect(hint.allowed?(association)).to eq(true)
+            expect(hint.allowed?).to eq(true)
           end
         end
       end
@@ -247,7 +300,7 @@ RSpec.describe Syncify::Hint::BasicHint do
 
           Campaign.reflect_on_all_associations.each do |association|
             expect(hint.applicable?(association)).to eq(true)
-            expect(hint.allowed?(association)).to eq(true)
+            expect(hint.allowed?).to eq(true)
           end
         end
       end
@@ -260,9 +313,9 @@ RSpec.describe Syncify::Hint::BasicHint do
             association2 = Listing.reflect_on_association(:campaigns)
 
             expect(hint.applicable?(association1)).to eq(true)
-            expect(hint.allowed?(association1)).to eq(true)
+            expect(hint.allowed?).to eq(true)
             expect(hint.applicable?(association2)).to eq(true)
-            expect(hint.allowed?(association2)).to eq(true)
+            expect(hint.allowed?).to eq(true)
           end
         end
 
@@ -274,11 +327,11 @@ RSpec.describe Syncify::Hint::BasicHint do
             association3 = Partner.reflect_on_association(:products)
 
             expect(hint.applicable?(association1)).to eq(true)
-            expect(hint.allowed?(association1)).to eq(true)
+            expect(hint.allowed?).to eq(true)
             expect(hint.applicable?(association2)).to eq(true)
-            expect(hint.allowed?(association2)).to eq(true)
+            expect(hint.allowed?).to eq(true)
             expect(hint.applicable?(association3)).to eq(true)
-            expect(hint.allowed?(association3)).to eq(true)
+            expect(hint.allowed?).to eq(true)
           end
         end
 
@@ -289,9 +342,9 @@ RSpec.describe Syncify::Hint::BasicHint do
             association2 = Vertical.reflect_on_association(:partners)
 
             expect(hint.applicable?(association1)).to eq(true)
-            expect(hint.allowed?(association1)).to eq(true)
+            expect(hint.allowed?).to eq(true)
             expect(hint.applicable?(association2)).to eq(true)
-            expect(hint.allowed?(association2)).to eq(true)
+            expect(hint.allowed?).to eq(true)
           end
         end
       end
@@ -303,9 +356,9 @@ RSpec.describe Syncify::Hint::BasicHint do
           association2 = Campaign.reflect_on_association(:partner)
 
           expect(hint.applicable?(association1)).to eq(true)
-          expect(hint.allowed?(association1)).to eq(true)
+          expect(hint.allowed?).to eq(true)
           expect(hint.applicable?(association2)).to eq(true)
-          expect(hint.allowed?(association2)).to eq(true)
+          expect(hint.allowed?).to eq(true)
         end
       end
     end

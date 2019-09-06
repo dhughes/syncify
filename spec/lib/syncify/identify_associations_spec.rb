@@ -392,8 +392,32 @@ RSpec.describe Syncify::IdentifyAssociations do
     end
   end
 
-    # it 'does not get stuck in an infinite loop' do
-    #   puts Syncify::IdentifyAssociations.run!(klass: Campaign)
-    # end
+  context 'when applying hints' do
+    context 'when the hint disallows an association' do
+      it 'does not include the disallowed association' do
+        listing = create(:listing)
+        agent = create(:agent, listings: [listing])
+        create(:campaign, reference_object: agent)
+        create(:campaign, reference_object: listing)
+        expected_associatons = [
+          :vertical,
+          { reference_object: {
+            Agent => :listings,
+            Listing => :agent
+          } },
+          { products: :order }
+        ]
 
+        generated_associations = Syncify::IdentifyAssociations.run!(
+          klass: Campaign,
+          hints: [
+            Syncify::Hint::BasicHint.new(to_class: Campaign, allowed: false),
+            Syncify::Hint::BasicHint.new(to_class: Partner, allowed: false)
+          ]
+        )
+
+        expect(generated_associations).to eq(expected_associatons)
+      end
+    end
+  end
 end

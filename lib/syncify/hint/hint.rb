@@ -5,7 +5,7 @@ module Syncify
         false
       end
 
-      def allowed?(candidate_association)
+      def allowed?
         true
       end
     end

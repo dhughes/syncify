@@ -21,12 +21,13 @@ module Syncify
       @has_and_belongs_to_many_associations = {}
 
       remote do
+        associations = normalized_associations(association)
         initial_query.each do |root_record|
-          identify_associated_records(root_record, normalized_associations(association))
+          identify_associated_records(root_record, associations)
         end
       end
 
-      puts "Identified #{identified_records.size} records to sync."
+      puts "\nIdentified #{identified_records.size} records to sync."
 
       callback.call(identified_records) if callback.present?
 
@@ -51,7 +52,11 @@ module Syncify
     end
 
     def print_status
-      print "\rIdentified #{identified_records.size} records..."
+      @identified_records_count ||= identified_records.size
+      if @identified_records_count != identified_records.size
+        puts "Identified #{identified_records.size} records..."
+        @identified_records_count = identified_records.size
+      end
     end
 
     def identify_associated_records(root, associations)
@@ -61,35 +66,41 @@ module Syncify
       standard_associations = associations.reject(&method(:includes_polymorphic_association))
       polymorphic_associations = associations.select(&method(:includes_polymorphic_association))
 
-      puts ">>>> Beginning to sync standard associations..."
       standard_associations.each do |association|
-        puts ">>>> Identifying data for association: #{association}"
         begin
           traverse_associations(root.class.eager_load(association).find(root.id), association)
         rescue StandardError => e
           binding.pry
-          x = root.class.find(root.id)
-          x.next_subscription_plan
-
+          x = 1231231231
         end
       end
-      puts ">>>> Done syncing standard associations!"
 
-      puts ">>>> Beginning to sync polymorphic associations..."
       identify_polymorphic_associated_records(root, polymorphic_associations)
-      puts ">>>> Done syncing polymorphic associations!"
     end
 
     def identify_polymorphic_associated_records(root, polymorphic_associations)
       polymorphic_associations.each do |polymorphic_association|
-        target = root.__send__(polymorphic_association.keys.first)
-        association = polymorphic_association.values.first
-        association_type = association.keys.first
+        property = polymorphic_association.keys.first
+        nested_associations = polymorphic_association[property]
 
-        next unless target&.is_a? association_type
+        referenced_objects = Array.wrap(root.__send__(property))
+        next if referenced_objects.empty?
 
-        associations = association[association_type]
-        identify_associated_records(target, normalized_associations(associations))
+        referenced_objects.each do |referenced_object|
+          # TODO: there's got to be a better way to express this
+          if polymorphic_association.values.first.keys.all? { |key| key.is_a? Class }
+            # TODO: please, Doug. Fix the names!!!
+            associated_types = nested_associations.keys
+            referenced_type = associated_types.find { |type| referenced_object.is_a?(type) }
+
+            identify_associated_records(
+              referenced_object,
+              normalized_associations(nested_associations[referenced_type])
+            )
+          else
+            identify_associated_records(referenced_object, normalized_associations(nested_associations))
+          end
+        end
       end
     end
 
@@ -101,7 +112,7 @@ module Syncify
 
       records.each do |record|
         associations.each do |association, nested_associations|
-          puts ">>>> Traversing association: #{association}"
+          puts "Traversing #{record.class.name}##{association}"
           if through_association?(record, association)
             traverse_associations(
               record.__send__(
@@ -148,12 +159,17 @@ module Syncify
 
         has_and_belongs_to_many_associations.each do |record, associations|
           associations.each do |association, associated_records|
-            local_record = record.class.find(record.id)
-            local_associated_records = associated_records.map do |associated_record|
-              associated_record.class.find(associated_record.id)
+            begin
+              local_record = record.class.find(record.id)
+              local_associated_records = associated_records.map do |associated_record|
+                associated_record.class.find(associated_record.id)
+              end
+              local_record.__send__(association) << local_associated_records
+              local_record.save
+            rescue StandardError => e
+              binding.pry
+              x = 123
             end
-            local_record.__send__(association) << local_associated_records
-            local_record.save
           end
         end
       end
@@ -184,15 +200,13 @@ module Syncify
     def includes_polymorphic_association(association)
       return false if association.nil?
       return false if association == {}
+      return true if association.keys.all? { |key| key.is_a? Class }
 
-      association.values.first.keys.first.is_a?(Class) || includes_polymorphic_association(association.values.first)
+      includes_polymorphic_association(association.values.first)
     end
 
     def normalized_associations(association)
-      puts ">>>> Normalizing Associations..."
       Syncify::NormalizeAssociations.run!(association: association)
-    ensure
-      puts ">>>> Normalizing Associations Done!"
     end
 
     def remote
