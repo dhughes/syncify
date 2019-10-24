@@ -206,7 +206,7 @@ RSpec.describe Syncify::Sync do
       associations = :products
 
       Syncify::Sync.run!(klass: Partner,
-                         where: remote_partner.id,
+                         id: remote_partner.id,
                          association: associations,
                          remote_database: :faux_remote_env)
 
@@ -224,7 +224,7 @@ RSpec.describe Syncify::Sync do
       associations = :products
 
       Syncify::Sync.run!(klass: Campaign,
-                         where: remote_campaign.id,
+                         id: remote_campaign.id,
                          association: associations,
                          remote_database: :faux_remote_env
       )
@@ -247,7 +247,7 @@ RSpec.describe Syncify::Sync do
       end
 
       Syncify::Sync.run!(klass: Partner,
-                         where: remote_partner.id,
+                         id: remote_partner.id,
                          remote_database: :faux_remote_env,
                          callback:
                            proc do |identified_records|
