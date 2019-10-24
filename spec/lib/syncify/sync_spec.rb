@@ -76,7 +76,7 @@ RSpec.describe Syncify::Sync do
           [partner = create(:partner),
            create(:campaign, partner: partner)]
         end
-        associations = {partner: {}}
+        associations = { partner: {} }
 
         Syncify::Sync.run!(klass: Campaign,
                            id: remote_campaign.id,
@@ -145,11 +145,10 @@ RSpec.describe Syncify::Sync do
       end
       associations = [:partner,
                       :vertical,
-                      Syncify::PolymorphicAssociation.new(
-                        :reference_object,
+                      { reference_object: {
                         Agent => {},
                         Listing => {}
-                      )]
+                      } }]
 
       Syncify::Sync.run!(klass: Campaign,
                          id: remote_campaign.id,
@@ -174,11 +173,10 @@ RSpec.describe Syncify::Sync do
         end
         associations = [:partner,
                         :vertical,
-                        Syncify::PolymorphicAssociation.new(
-                          :reference_object,
+                        { reference_object: {
                           Agent => {},
                           Listing => {}
-                        )]
+                        } }]
 
         Syncify::Sync.run!(klass: Campaign,
                            id: remote_campaign.id,
@@ -208,7 +206,7 @@ RSpec.describe Syncify::Sync do
       associations = :products
 
       Syncify::Sync.run!(klass: Partner,
-                         where: remote_partner.id,
+                         id: remote_partner.id,
                          association: associations,
                          remote_database: :faux_remote_env)
 
@@ -226,7 +224,7 @@ RSpec.describe Syncify::Sync do
       associations = :products
 
       Syncify::Sync.run!(klass: Campaign,
-                         where: remote_campaign.id,
+                         id: remote_campaign.id,
                          association: associations,
                          remote_database: :faux_remote_env
       )
@@ -249,7 +247,7 @@ RSpec.describe Syncify::Sync do
       end
 
       Syncify::Sync.run!(klass: Partner,
-                         where: remote_partner.id,
+                         id: remote_partner.id,
                          remote_database: :faux_remote_env,
                          callback:
                            proc do |identified_records|
@@ -263,7 +261,7 @@ RSpec.describe Syncify::Sync do
 
                              expect(remote_partner2).to eq(remote_partner)
                            end
-                        )
+      )
     end
   end
 
@@ -307,11 +305,12 @@ RSpec.describe Syncify::Sync do
       associations = [
         { partner: :settings },
         :vertical,
-        Syncify::PolymorphicAssociation.new(
-          :reference_object,
-          Agent => :listings,
-          Listing => { agent: :listings }
-        )
+        {
+          reference_object: {
+            Agent => :listings,
+            Listing => { agent: :listings }
+          }
+        }
       ]
 
       Syncify::Sync.run!(klass: Campaign,
@@ -355,7 +354,7 @@ RSpec.describe Syncify::Sync do
                              vertical = identified_records.find { |record| record.class == Vertical }
                              vertical.name = 'good name'
                            end
-                         )
+      )
 
       expect(Vertical.all.size).to eq(1)
       expect(Vertical.first.name).to eq('good name')
