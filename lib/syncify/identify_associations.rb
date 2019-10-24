@@ -44,7 +44,7 @@ module Syncify
 
     def identify_associations(from_class, destination)
       applicable_associations(from_class).each do |association|
-        puts "Inspecting #{from_class.name}##{association.name}#{' '*50}"
+        puts "Inspecting #{from_class.name}##{association.name}#{' ' * 50}"
         pending_association = if association.polymorphic?
                                 Syncify::Association::PolymorphicAssociation.new(
                                   from_class: from_class,
@@ -67,6 +67,8 @@ module Syncify
       while (association = next_untraversed_association)
         association.traversed = true
 
+        next if should_ignore_association?(association)
+
         if association.polymorphic?
           association.to_classes.each do |to_class|
             identify_associations(
@@ -83,6 +85,20 @@ module Syncify
       end
 
       identified_associations
+    end
+
+    def should_ignore_association?(association)
+      # ignore if association is the inverse of an association that has already been traversed
+      return true if traversed_associations.find do |traversed_association|
+        traversed_association.inverse_of?(association)
+      end
+
+      # binding.pry
+      false
+    end
+
+    def traversed_associations
+      association_registry.select { |association| association.traversed }
     end
 
     def next_untraversed_association
