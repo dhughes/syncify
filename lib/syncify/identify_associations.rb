@@ -44,7 +44,7 @@ module Syncify
 
     def identify_associations(from_class, destination)
       applicable_associations(from_class).each do |association|
-        puts "Inspecting #{from_class.name}##{association.name}#{' ' * 50}"
+        puts "Inspecting #{from_class.name}##{association.name}"
         pending_association = if association.polymorphic?
                                 Syncify::Association::PolymorphicAssociation.new(
                                   from_class: from_class,

@@ -122,21 +122,21 @@ RSpec.describe Syncify::IdentifyAssociations do
       create_table :wares do |t|
         t.references :categories
       end
-      create_table :categories
+      create_table :classifications
       create_table :seller
     end
     class Ware < ActiveRecord::Base
-      belongs_to :category
+      belongs_to :classification
       belongs_to :seller
     end
-    class Category < ActiveRecord::Base;
+    class Classification < ActiveRecord::Base;
     end
     class Seller < ActiveRecord::Base;
     end
 
     generated_associations = Syncify::IdentifyAssociations.run!(klass: Ware)
 
-    expect(generated_associations).to eq([:category, :seller])
+    expect(generated_associations).to eq([:classification, :seller])
   end
 
   it 'returns a hash for a single has many through association' do
@@ -419,5 +419,74 @@ RSpec.describe Syncify::IdentifyAssociations do
         expect(generated_associations).to eq(expected_associatons)
       end
     end
+  end
+
+  it 'can identify complex associations with polymorphic associations' do
+    ActiveRecord::Schema.define do
+      create_table :customers
+      create_table :invoices do |t|
+        t.references :customer, foreign_key: true
+      end
+      create_table :line_items do |t|
+        t.references :invoice, foreign_key: true
+        t.references :product, polymorphic: true
+      end
+      create_table :digital_products do |t|
+        t.references :category
+      end
+      create_table :physical_products do |t|
+        t.references :distributor
+      end
+      create_table :categories
+      create_table :distributors
+    end
+
+    class Customer < ActiveRecord::Base
+      has_many :invoices
+    end
+    class Invoice < ActiveRecord::Base
+      belongs_to :customer
+      has_many :line_items
+    end
+    class LineItem < ActiveRecord::Base
+      belongs_to :invoice
+      belongs_to :product, polymorphic: true
+    end
+    class DigitalProduct < ActiveRecord::Base
+      has_many :line_items, as: :product
+      belongs_to :category
+    end
+    class PhysicalProduct < ActiveRecord::Base
+      has_many :line_items, as: :product
+      belongs_to :distributor
+    end
+    class Category < ActiveRecord::Base
+      has_many :digital_products
+    end
+    class Distributor < ActiveRecord::Base
+      has_many :physical_products
+    end
+    ca = Category.create
+    di = Distributor.create
+    dp = DigitalProduct.create(category: ca)
+    pp = PhysicalProduct.create(distributor: di)
+    c = Customer.create
+    i = Invoice.create(customer: c)
+    LineItem.create(invoice: i, product: dp)
+    LineItem.create(invoice: i, product: pp)
+    expected_associations = {
+      invoices: {
+        line_items: {
+          product: {
+            DigitalProduct => :category,
+            PhysicalProduct => :distributor
+          }
+        }
+      }
+    }
+
+    generated_associations = Syncify::IdentifyAssociations.run!(klass: Customer)
+
+    expect(generated_associations).to eq(expected_associations)
   end
 end
