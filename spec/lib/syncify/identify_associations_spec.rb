@@ -403,7 +403,7 @@ RSpec.describe Syncify::IdentifyAssociations do
           :vertical,
           { reference_object: {
             Agent => :listings,
-            Listing => :agent
+            Listing => nil # this is nil because it would otherwise be :agent and this is an inverse of Agent => :listings
           } },
           { products: :order }
         ]

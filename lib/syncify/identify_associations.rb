@@ -89,12 +89,9 @@ module Syncify
 
     def should_ignore_association?(association)
       # ignore if association is the inverse of an association that has already been traversed
-      return true if traversed_associations.find do |traversed_association|
+      traversed_associations.find do |traversed_association|
         traversed_association.inverse_of?(association)
       end
-
-      # binding.pry
-      false
     end
 
     def traversed_associations
@@ -108,10 +105,10 @@ module Syncify
     def applicable_associations(klass)
       klass.
         reflect_on_all_associations.
-        reject(&method(:ignored_association?))
+        reject(&method(:inapplicable_associations))
     end
 
-    def ignored_association?(association)
+    def inapplicable_associations(association)
       return true if association.class == ActiveRecord::Reflection::ThroughReflection
 
       hints.each do |hint|
