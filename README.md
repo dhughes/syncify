@@ -282,12 +282,12 @@ All hints have two methods:
 
 You are most likely to use the `BasicHint` class. This class has a constructor that accepts the following arguments:
 
-| Argument      | Type                       | Default | Description                                                                                                                                                                                |
-| ------------- | -------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `from_class`  | Class or array of classes  | nil     | If provided, the `from_class` argument declares that the hint applies to associations from the specified class or classes.                                                                 |
-| `association` | Symbol or array of symbols | nil     | If provided, the `association` argument declares that the hint applies to associations with the specified name or names.                                                                   |
-| `to_class`    | Class or array of classes  | nil     | If provided, the `to_class` argument declares that the hint applies to associations to the specified class or classes.                                                                     |
-| `allowed`     | Boolean (required)         |         | This argument indicates that if the hint is applicable to a particular association that it is or is not allowed, meaning that the `IdentifyAssociations` class will or will not ignore it. |
+| Argument      | Type                                | Default | Description                                                                                                                                                                                |
+| ------------- | ----------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `from_class`  | Class or array of classes           | nil     | If provided, the `from_class` argument declares that the hint applies to associations from the specified class or classes.                                                                 |
+| `association` | Symbol or array of symbols or regex | nil     | If provided, the `association` argument declares that the hint applies to associations with the specified name or names or names matching the specified regular expression.                |
+| `to_class`    | Class or array of classes           | nil     | If provided, the `to_class` argument declares that the hint applies to associations to the specified class or classes.                                                                     |
+| `allowed`     | Boolean (required)                  |         | This argument indicates that if the hint is applicable to a particular association that it is or is not allowed, meaning that the `IdentifyAssociations` class will or will not ignore it. |
 
 Hints can be specified for use by `IdentifyAssociations` like so:
 

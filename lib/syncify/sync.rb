@@ -67,12 +67,12 @@ module Syncify
       polymorphic_associations = associations.select(&method(:includes_polymorphic_association))
 
       standard_associations.each do |association|
-        begin
-          traverse_associations(root.class.eager_load(association).find(root.id), association)
-        rescue StandardError => e
-          binding.pry
-          x = 1231231231
-        end
+        # begin
+        traverse_associations(root.class.eager_load(association).find(root.id), association)
+        # rescue StandardError => e
+        #   binding.pry
+        #   x = 1231231231
+        # end
       end
 
       identify_polymorphic_associated_records(root, polymorphic_associations)
@@ -159,17 +159,17 @@ module Syncify
 
         has_and_belongs_to_many_associations.each do |record, associations|
           associations.each do |association, associated_records|
-            begin
-              local_record = record.class.find(record.id)
-              local_associated_records = associated_records.map do |associated_record|
-                associated_record.class.find(associated_record.id)
-              end
-              local_record.__send__(association) << local_associated_records
-              local_record.save
-            rescue StandardError => e
-              binding.pry
-              x = 123
+            # begin
+            local_record = record.class.find(record.id)
+            local_associated_records = associated_records.map do |associated_record|
+              associated_record.class.find(associated_record.id)
             end
+            local_record.__send__(association) << local_associated_records
+            local_record.save
+            # rescue StandardError => e
+            #   binding.pry
+            #   x = 123
+            # end
           end
         end
       end
