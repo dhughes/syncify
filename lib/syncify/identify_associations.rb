@@ -89,9 +89,10 @@ module Syncify
 
     def should_ignore_association?(association)
       # ignore if association is the inverse of an association that has already been traversed
-      traversed_associations.find do |traversed_association|
-        traversed_association.inverse_of?(association)
-      end
+      # traversed_associations.find do |traversed_association|
+      #   traversed_association.inverse_of?(association)
+      # end
+      false
     end
 
     def traversed_associations

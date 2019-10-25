@@ -6,7 +6,7 @@ RSpec.describe Syncify::IdentifyAssociations do
       ActiveRecord::Schema.define do
         create_table :cats
       end
-      class Cat < ActiveRecord::Base;
+      class Cat < ActiveRecord::Base
       end
 
       generated_associations = Syncify::IdentifyAssociations.run!(klass: Cat)
@@ -25,7 +25,7 @@ RSpec.describe Syncify::IdentifyAssociations do
     class Car < ActiveRecord::Base
       has_one :steering_wheel
     end
-    class SteeringWheel < ActiveRecord::Base;
+    class SteeringWheel < ActiveRecord::Base
     end
 
     generated_associations = Syncify::IdentifyAssociations.run!(klass: Car)
@@ -47,14 +47,14 @@ RSpec.describe Syncify::IdentifyAssociations do
       has_one :trunk
       has_one :color
     end
-    class Trunk < ActiveRecord::Base;
+    class Trunk < ActiveRecord::Base
     end
-    class Color < ActiveRecord::Base;
+    class Color < ActiveRecord::Base
     end
 
     generated_associations = Syncify::IdentifyAssociations.run!(klass: Elephant)
 
-    expect(generated_associations).to eq([:trunk, :color])
+    expect(generated_associations).to eq(%i[trunk color])
   end
 
   it 'returns a single symbol for a single has_many association' do
@@ -67,7 +67,7 @@ RSpec.describe Syncify::IdentifyAssociations do
     class Train < ActiveRecord::Base
       has_many :engines
     end
-    class Engine < ActiveRecord::Base;
+    class Engine < ActiveRecord::Base
     end
 
     generated_associations = Syncify::IdentifyAssociations.run!(klass: Train)
@@ -89,14 +89,14 @@ RSpec.describe Syncify::IdentifyAssociations do
       has_many :passengers
       has_many :pilots
     end
-    class Passenger < ActiveRecord::Base;
+    class Passenger < ActiveRecord::Base
     end
-    class Pilot < ActiveRecord::Base;
+    class Pilot < ActiveRecord::Base
     end
 
     generated_associations = Syncify::IdentifyAssociations.run!(klass: Plane)
 
-    expect(generated_associations).to eq([:passengers, :pilots])
+    expect(generated_associations).to eq(%i[passengers pilots])
   end
 
   it 'returns a single symbol for a single belongs_to association' do
@@ -106,7 +106,7 @@ RSpec.describe Syncify::IdentifyAssociations do
         t.references :schools
       end
     end
-    class School < ActiveRecord::Base;
+    class School < ActiveRecord::Base
     end
     class Student < ActiveRecord::Base
       belongs_to :school
@@ -129,14 +129,14 @@ RSpec.describe Syncify::IdentifyAssociations do
       belongs_to :classification
       belongs_to :seller
     end
-    class Classification < ActiveRecord::Base;
+    class Classification < ActiveRecord::Base
     end
-    class Seller < ActiveRecord::Base;
+    class Seller < ActiveRecord::Base
     end
 
     generated_associations = Syncify::IdentifyAssociations.run!(klass: Ware)
 
-    expect(generated_associations).to eq([:classification, :seller])
+    expect(generated_associations).to eq(%i[classification seller])
   end
 
   it 'returns a hash for a single has many through association' do
@@ -297,7 +297,7 @@ RSpec.describe Syncify::IdentifyAssociations do
       class Gizmo < ActiveRecord::Base
         has_many :pictures, as: :imageable
       end
-      class Region < ActiveRecord::Base;
+      class Region < ActiveRecord::Base
       end
       Employee.create(pictures: [Picture.new])
       Gizmo.create(pictures: [Picture.new])
@@ -337,7 +337,7 @@ RSpec.describe Syncify::IdentifyAssociations do
         class Gizmo < ActiveRecord::Base
           has_many :pictures, as: :imageable
         end
-        class Region < ActiveRecord::Base;
+        class Region < ActiveRecord::Base
         end
         Employee.create(pictures: [Picture.new])
         Gizmo.create(pictures: [Picture.new])
@@ -488,5 +488,80 @@ RSpec.describe Syncify::IdentifyAssociations do
     generated_associations = Syncify::IdentifyAssociations.run!(klass: Customer)
 
     expect(generated_associations).to eq(expected_associations)
+  end
+
+  context 'when an object has an association and is itself associated to from multiple places' do
+    it 'traverses all the paths through the object' do
+      ActiveRecord::Schema.define do
+        create_table :engagements do |t|
+          t.references :user
+          t.references :affiliate
+        end
+        create_table :transactions do |t|
+          t.references :engagement
+          t.references :affiliate
+          t.references :issued_by_user, references: :users
+        end
+        create_table :users do |t|
+          t.references :affiliate
+        end
+        create_table :affiliates
+      end
+
+      class Engagement < ActiveRecord::Base
+        belongs_to :user
+        belongs_to :affiliate
+        has_many :transactions
+      end
+      class Transaction < ActiveRecord::Base
+        belongs_to :affiliate
+        belongs_to :engagement, optional: true
+        belongs_to :issued_by_user, class_name: 'User', optional: true
+      end
+      class User < ActiveRecord::Base
+        belongs_to :affiliate
+        has_many :engagements
+        has_many :issued_transactions, foreign_key: :issued_by_user_id, class_name: 'Transaction'
+      end
+      class Affiliate < ActiveRecord::Base
+        has_many :transactions
+        has_many :users
+      end
+
+      affiliate = Affiliate.create
+      user1 = User.create(affiliate: affiliate)
+      user2 = User.create(affiliate: affiliate)
+      user3 = User.create(affiliate: affiliate)
+      engagement_transaction1 = Transaction.create(affiliate: affiliate, issued_by_user: user1)
+      engagement_transaction2 = Transaction.create(affiliate: affiliate, issued_by_user: user3)
+      engagement_transaction3 = Transaction.create(affiliate: affiliate, issued_by_user: user1)
+      engagement = Engagement.create(user: user1, affiliate: affiliate, transactions: [engagement_transaction1, engagement_transaction2])
+
+      # expected_associations = [
+      #   {
+      #     user: [
+      #       :affiliate,
+      #       issued_transactions: [
+      #         :affiliate,
+      #         engagements: {}
+      #       ]
+      #     ]
+      #   },
+      #   {
+      #     affiliate: {
+      #       users
+      #       transactions: :issued_by_user
+      #     }
+      #   },
+      #   :transactions
+      # ]
+
+      # Engagement -> User -> Transactions  ###### don't go to user as it's an inverse in the same branch
+      # Engagement -> Affiliate -> Transactions (-> User)
+      # Engagement -> Transactions (-> User)
+      binding.pry
+      generated_associations = Syncify::IdentifyAssociations.run!(klass: Engagement)
+
+    end
   end
 end
