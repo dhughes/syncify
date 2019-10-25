@@ -403,7 +403,7 @@ RSpec.describe Syncify::IdentifyAssociations do
           :vertical,
           { reference_object: {
             Agent => :listings,
-            Listing => nil # this is nil because it would otherwise be :agent and this is an inverse of Agent => :listings
+            Listing => :agent
           } },
           { products: :order }
         ]
@@ -488,5 +488,80 @@ RSpec.describe Syncify::IdentifyAssociations do
     generated_associations = Syncify::IdentifyAssociations.run!(klass: Customer)
 
     expect(generated_associations).to eq(expected_associations)
+  end
+
+  context 'when an object has an association and is itself associated to from multiple places' do
+    it 'traverses all the paths through the object' do
+      fail
+      ActiveRecord::Schema.define do
+        create_table :engagements do |t|
+          t.references :user
+          t.references :affiliate
+        end
+        create_table :transactions do |t|
+          t.references :engagement
+          t.references :affiliate
+          t.references :issued_by_user, references: :users
+        end
+        create_table :users do |t|
+          t.references :affiliate
+        end
+        create_table :affiliates
+      end
+
+      class Engagement < ActiveRecord::Base
+        belongs_to :user
+        belongs_to :affiliate
+        has_many :transactions
+      end
+      class Transaction < ActiveRecord::Base
+        belongs_to :affiliate
+        belongs_to :engagement, optional: true
+        belongs_to :issued_by_user, class_name: 'User', optional: true
+      end
+      class User < ActiveRecord::Base
+        belongs_to :affiliate
+        has_many :engagements
+        has_many :issued_transactions, foreign_key: :issued_by_user_id, class_name: 'Transaction'
+      end
+      class Affiliate < ActiveRecord::Base
+        has_many :transactions
+        has_many :users
+      end
+
+      affiliate = Affiliate.create
+      user1 = User.create(affiliate: affiliate)
+      user2 = User.create(affiliate: affiliate)
+      user3 = User.create(affiliate: affiliate)
+      engagement_transaction1 = Transaction.create(affiliate: affiliate, issued_by_user: user1)
+      engagement_transaction2 = Transaction.create(affiliate: affiliate, issued_by_user: user3)
+      engagement_transaction3 = Transaction.create(affiliate: affiliate, issued_by_user: user1)
+      engagement = Engagement.create(user: user1, affiliate: affiliate, transactions: [engagement_transaction1, engagement_transaction2])
+
+      # expected_associations = [
+      #   {
+      #     user: [
+      #       :affiliate,
+      #       issued_transactions: [
+      #         :affiliate,
+      #         engagements: {}
+      #       ]
+      #     ]
+      #   },
+      #   {
+      #     affiliate: {
+      #       users
+      #       transactions: :issued_by_user
+      #     }
+      #   },
+      #   :transactions
+      # ]
+
+      # Engagement -> User -> Transactions  ###### don't go to user as it's an inverse in the same branch
+      # Engagement -> Affiliate -> Transactions (-> User)
+      # Engagement -> Transactions (-> User)
+
+      generated_associations = Syncify::IdentifyAssociations.run!(klass: Engagement)
+    end
   end
 end

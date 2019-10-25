@@ -42,22 +42,34 @@ module Syncify
       simplified_associations
     end
 
-    def identify_associations(from_class, destination)
+    def identify_associations(from_class, destination, parents = [])
       applicable_associations(from_class).each do |association|
         puts "Inspecting #{from_class.name}##{association.name}"
         pending_association = if association.polymorphic?
                                 Syncify::Association::PolymorphicAssociation.new(
                                   from_class: from_class,
                                   association: association,
-                                  destination: destination
+                                  destination: destination,
+                                  parents: parents + [association.hash]
                                 )
                               else
                                 Syncify::Association::StandardAssociation.new(
                                   from_class: from_class,
                                   association: association,
-                                  destination: destination
+                                  destination: destination,
+                                  parents: parents + [association.hash]
                                 )
                               end
+
+        # TODO: figure out how to detect if we have a circular association.
+        # see https://www.geeksforgeeks.org/detect-loop-in-a-linked-list/ for an idea
+        # this won't work with how we're tracking associations yet, since we don't know if we're
+        # traversing the _exact same_ association. But, maybe I could replace `parents` being a list
+        # of previous classes in the association chain, but instead be a hash of the actual rails
+        # association. That way, if this association's parent rails association hash appears in the
+        # list, then we know it's circular. (Sorry future me if this is word salad. I'm whipped
+        # right now. It's been a long week. :) )
+        next if pending_association.circular?
 
         association_registry << pending_association
       end
@@ -73,13 +85,15 @@ module Syncify
           association.to_classes.each do |to_class|
             identify_associations(
               to_class,
-              association.create_destination(to_class)
+              association.create_destination(to_class),
+              association.parents
             )
           end
         else
           identify_associations(
             association.to_class,
-            association.create_destination(association.name)
+            association.create_destination(association.name),
+            association.parents
           )
         end
       end
