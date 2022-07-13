@@ -34,6 +34,6 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "factory_bot_rails", "~> 4.11"
 
   spec.add_runtime_dependency "active_interaction", "~> 3.0"
-  spec.add_runtime_dependency "activerecord", "~> 5.0"
+  spec.add_runtime_dependency "activerecord", ">= 5", "< 8"
   spec.add_runtime_dependency "activerecord-import", "~> 0.17"
 end
